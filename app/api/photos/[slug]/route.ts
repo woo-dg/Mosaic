@@ -6,8 +6,18 @@ export async function GET(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
+    let slug: string
+    try {
+      const resolvedParams = await params
+      slug = resolvedParams.slug
+    } catch (error) {
+      return NextResponse.json(
+        { error: 'Invalid request parameters', photos: [] },
+        { status: 400 }
+      )
+    }
+
     const supabase = createServerClient()
-    const { slug } = await params
 
     // Get restaurant by slug
     const { data: restaurant, error: restaurantError } = await supabase
@@ -57,10 +67,16 @@ export async function GET(
       }))
     )
 
-    return NextResponse.json({ photos })
+    return NextResponse.json({ photos: photos || [] }, {
+      headers: { 'Content-Type': 'application/json' }
+    })
   } catch (error: any) {
+    console.error('Photos API error:', error)
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { 
+        error: error?.message || 'Internal server error',
+        photos: []
+      },
       { status: 500 }
     )
   }

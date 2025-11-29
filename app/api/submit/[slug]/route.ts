@@ -7,9 +7,28 @@ export async function POST(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
+    let slug: string
+    try {
+      const resolvedParams = await params
+      slug = resolvedParams.slug
+    } catch (error) {
+      return NextResponse.json(
+        { error: 'Invalid request parameters' },
+        { status: 400 }
+      )
+    }
+
     const supabase = createServerClient()
-    const { slug } = await params
-    const formData = await request.formData()
+    
+    let formData: FormData
+    try {
+      formData = await request.formData()
+    } catch (error) {
+      return NextResponse.json(
+        { error: 'Failed to parse form data' },
+        { status: 400 }
+      )
+    }
 
     const restaurantId = formData.get('restaurantId') as string
     const restaurantSlug = formData.get('restaurantSlug') as string
@@ -19,11 +38,21 @@ export async function POST(
     const allowMarketing = formData.get('allowMarketing') === 'true'
     const images = formData.getAll('images') as File[]
 
+    if (!restaurantId || !restaurantSlug) {
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      )
+    }
+
     // Validate restaurant slug matches
     if (restaurantSlug !== slug) {
       return NextResponse.json(
         { error: 'Invalid restaurant' },
-        { status: 400 }
+        { 
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        }
       )
     }
 
@@ -162,10 +191,16 @@ export async function POST(
     return NextResponse.json({
       success: true,
       submissionId: submissionData.id,
+    }, {
+      headers: { 'Content-Type': 'application/json' }
     })
   } catch (error: any) {
+    console.error('Submit error:', error)
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { 
+        error: error?.message || 'Internal server error',
+        details: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+      },
       { status: 500 }
     )
   }
