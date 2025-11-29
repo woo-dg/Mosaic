@@ -74,8 +74,10 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
       if (!response.ok) {
         const text = await response.text()
         console.error('Failed to fetch photos:', response.status, text)
-        setPhotos([])
-        setLoading(false)
+        if (photos.length === 0) {
+          setPhotos([])
+          setLoading(false)
+        }
         return
       }
       
@@ -83,49 +85,69 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
       if (!contentType || !contentType.includes('application/json')) {
         const text = await response.text()
         console.error('Invalid response type:', contentType, text.substring(0, 100))
-        setPhotos([])
-        setLoading(false)
+        if (photos.length === 0) {
+          setPhotos([])
+          setLoading(false)
+        }
         return
       }
       
       const data = await response.json()
 
       if (data.photos && Array.isArray(data.photos)) {
-        setPhotos(data.photos)
+        // Only update if photos actually changed (prevent unnecessary re-renders)
+        const newPhotoIds = data.photos.map((p: Photo) => p.id).join(',')
+        const currentPhotoIds = photos.map(p => p.id).join(',')
         
-        // Load signed URLs for all photos in parallel
-        const urlPromises = data.photos.map(async (photo: Photo) => {
-          try {
-            const urlResponse = await fetch(
-              `/api/photos/public-sign-url?path=${encodeURIComponent(photo.file_path)}&slug=${restaurantSlug}`,
-              { cache: 'no-store' }
-            )
-            const urlData = await urlResponse.json()
-            if (urlData.url) {
-              return { id: photo.id, url: urlData.url }
+        if (newPhotoIds !== currentPhotoIds) {
+          setPhotos(data.photos)
+          
+          // Load signed URLs for new photos only
+          const existingUrls = { ...imageUrls }
+          const urlPromises = data.photos.map(async (photo: Photo) => {
+            // Skip if we already have the URL
+            if (existingUrls[photo.id]) {
+              return { id: photo.id, url: existingUrls[photo.id] }
             }
-          } catch (error) {
-            console.error('Error loading image URL:', error)
-          }
-          return null
-        })
-        
-        const urlResults = await Promise.all(urlPromises)
-        const urls: Record<string, string> = {}
-        urlResults.forEach((result) => {
-          if (result) {
-            urls[result.id] = result.url
-          }
-        })
-        setImageUrls(urls)
+            
+            try {
+              const urlResponse = await fetch(
+                `/api/photos/public-sign-url?path=${encodeURIComponent(photo.file_path)}&slug=${restaurantSlug}`,
+                { cache: 'no-store' }
+              )
+              const urlData = await urlResponse.json()
+              if (urlData.url) {
+                return { id: photo.id, url: urlData.url }
+              }
+            } catch (error) {
+              console.error('Error loading image URL:', error)
+            }
+            return null
+          })
+          
+          const urlResults = await Promise.all(urlPromises)
+          const urls: Record<string, string> = { ...existingUrls }
+          urlResults.forEach((result) => {
+            if (result) {
+              urls[result.id] = result.url
+            }
+          })
+          setImageUrls(urls)
+        }
       } else {
-        setPhotos([])
+        if (photos.length === 0) {
+          setPhotos([])
+        }
       }
     } catch (error) {
       console.error('Error loading photos:', error)
-      setPhotos([])
+      if (photos.length === 0) {
+        setPhotos([])
+      }
     } finally {
-      setLoading(false)
+      if (photos.length === 0) {
+        setLoading(false)
+      }
     }
   }
 
@@ -188,22 +210,22 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
           >
             ↻
           </button>
-          <button
-            onClick={onUploadClick}
-            className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-blue-700 active:bg-blue-800 transition-all shadow-md touch-manipulation"
-          >
-            Upload Your Photo +
-          </button>
+        <button
+          onClick={onUploadClick}
+          className="bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-800 active:bg-gray-700 transition-all shadow-md touch-manipulation"
+        >
+          Upload Your Photo +
+        </button>
         </div>
       </div>
 
       {photos.length === 0 ? (
         <div className="px-4">
-          <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-2xl p-8 text-center border-2 border-dashed border-yellow-200">
-            <p className="text-gray-600 mb-4">No photos yet. Be the first to share!</p>
+          <div className="bg-gray-50 rounded-2xl p-8 text-center border-2 border-dashed border-gray-300">
+            <p className="text-gray-700 mb-4 font-medium">No photos yet. Be the first to share!</p>
             <button
               onClick={onUploadClick}
-              className="bg-yellow-400 text-gray-900 px-6 py-3 rounded-xl font-semibold hover:bg-yellow-500 active:bg-yellow-600 transition-all shadow-lg touch-manipulation border-2 border-gray-900"
+              className="bg-gray-900 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gray-800 active:bg-gray-700 transition-all shadow-lg touch-manipulation"
             >
               Upload Your Photo +
             </button>
@@ -225,7 +247,7 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
               style={{ scrollSnapAlign: 'start' }}
             >
               {/* Image Container - styled like the reference image */}
-              <div className="relative w-full h-[200px] sm:h-[240px] bg-gradient-to-br from-gray-50 to-gray-100">
+              <div className="relative w-full h-[200px] sm:h-[240px] bg-gray-100 overflow-hidden">
                 {imageUrls[photo.id] ? (
                   <Image
                     src={imageUrls[photo.id]}
@@ -233,6 +255,10 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
                     fill
                     className="object-cover"
                     sizes="(max-width: 640px) 280px, 320px"
+                    priority={index < 3}
+                    onLoad={() => {
+                      // Image loaded successfully
+                    }}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-gray-100">
@@ -263,10 +289,10 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
 
           {/* Upload Card - Always visible at the end - styled like reference */}
           <div
-            className="flex-shrink-0 w-[280px] sm:w-[320px] rounded-2xl overflow-hidden shadow-lg bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-200"
+            className="flex-shrink-0 w-[280px] sm:w-[320px] rounded-2xl overflow-hidden shadow-lg bg-gray-50 border-2 border-gray-200"
             style={{ scrollSnapAlign: 'start' }}
           >
-            <div className="h-[200px] sm:h-[240px] flex items-center justify-center bg-gradient-to-br from-yellow-100 to-orange-100">
+            <div className="h-[200px] sm:h-[240px] flex items-center justify-center bg-gray-100">
               <div className="text-center px-4">
                 <div className="text-5xl mb-3">📸</div>
                 <p className="text-sm font-semibold text-gray-800">Share your moment</p>
@@ -276,7 +302,7 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
             <div className="p-4 bg-white">
               <button
                 onClick={onUploadClick}
-                className="w-full bg-yellow-400 text-gray-900 py-3 px-4 rounded-xl font-bold hover:bg-yellow-500 active:bg-yellow-600 transition-all shadow-lg touch-manipulation border-2 border-gray-900 text-sm"
+                className="w-full bg-gray-900 text-white py-3 px-4 rounded-xl font-semibold hover:bg-gray-800 active:bg-gray-700 transition-all shadow-lg touch-manipulation text-sm"
               >
                 Upload Your Photo +
               </button>

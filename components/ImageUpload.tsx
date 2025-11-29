@@ -71,7 +71,7 @@ export default function ImageUpload({ maxImages = 3, onImagesChange }: ImageUplo
           type="button"
           onClick={handleClick}
           disabled={images.length >= maxImages}
-          className="w-full py-6 sm:py-8 px-4 border-2 border-dashed border-gray-300 rounded-xl hover:border-blue-500 active:border-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation bg-gray-50 hover:bg-gray-100"
+          className="w-full py-6 sm:py-8 px-4 border-2 border-dashed border-gray-300 rounded-xl hover:border-gray-400 active:border-gray-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation bg-gray-50 hover:bg-gray-100"
         >
           <div className="text-center">
             <svg
