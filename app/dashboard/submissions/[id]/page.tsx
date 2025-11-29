@@ -23,6 +23,7 @@ interface Submission {
 
 export default function SubmissionDetailPage() {
   const { user, isLoaded } = useUser()
+  const { getToken } = useAuth()
   const router = useRouter()
   const params = useParams()
   const submissionId = params.id as string
