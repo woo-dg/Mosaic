@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       .insert({
         name: name.trim(),
         slug: slug.trim(),
-      })
+      } as any)
       .select()
       .single()
 
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
       .insert({
         manager_id: userId,
         restaurant_id: restaurant.id,
-      })
+      } as any)
 
     if (managerError) {
       // Rollback: delete restaurant if manager mapping fails

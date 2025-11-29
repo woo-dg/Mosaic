@@ -90,7 +90,7 @@ export async function POST(
         instagram_handle: instagramHandle?.trim() || null,
         allow_marketing: allowMarketing,
         agreed_private: true,
-      })
+      } as any)
       .select()
       .single()
 
@@ -136,7 +136,7 @@ export async function POST(
         .insert({
           submission_id: submissionId,
           file_path: filePath,
-        })
+        } as any)
 
       if (photoError) {
         // Clean up: delete uploaded file and submission
