@@ -87,7 +87,15 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const submission = photo.submissions as any
+    // TypeScript type guard - photo is guaranteed to exist here
+    type PhotoWithSubmission = {
+      submission_id: string
+      submissions: {
+        restaurant_id: string
+      }
+    }
+    const photoData = photo as PhotoWithSubmission
+    const submission = photoData.submissions as any
     if (!submission || submission.restaurant_id !== restaurantData.id) {
       return NextResponse.json(
         { error: 'Access denied' },
