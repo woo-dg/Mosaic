@@ -56,7 +56,7 @@ export default function ImageUpload({ maxImages = 3, onImagesChange }: ImageUplo
   return (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm sm:text-base font-medium text-gray-700 mb-2">
           Photos ({images.length}/{maxImages})
         </label>
         <input
@@ -71,11 +71,11 @@ export default function ImageUpload({ maxImages = 3, onImagesChange }: ImageUplo
           type="button"
           onClick={handleClick}
           disabled={images.length >= maxImages}
-          className="w-full py-4 px-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full py-6 sm:py-8 px-4 border-2 border-dashed border-gray-300 rounded-xl hover:border-blue-500 active:border-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation bg-gray-50 hover:bg-gray-100"
         >
           <div className="text-center">
             <svg
-              className="mx-auto h-12 w-12 text-gray-400"
+              className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400"
               stroke="currentColor"
               fill="none"
               viewBox="0 0 48 48"
@@ -87,7 +87,7 @@ export default function ImageUpload({ maxImages = 3, onImagesChange }: ImageUplo
                 strokeLinejoin="round"
               />
             </svg>
-            <p className="mt-2 text-sm text-gray-600">
+            <p className="mt-2 text-sm sm:text-base text-gray-600 font-medium">
               {images.length >= maxImages
                 ? 'Maximum images reached'
                 : 'Tap to add photos'}
@@ -97,9 +97,9 @@ export default function ImageUpload({ maxImages = 3, onImagesChange }: ImageUplo
       </div>
 
       {previews.length > 0 && (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-3 sm:gap-4">
           {previews.map((preview, index) => (
-            <div key={index} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200">
+            <div key={index} className="relative aspect-square rounded-xl overflow-hidden border-2 border-gray-200 shadow-sm">
               <img
                 src={preview}
                 alt={`Preview ${index + 1}`}
@@ -108,7 +108,8 @@ export default function ImageUpload({ maxImages = 3, onImagesChange }: ImageUplo
               <button
                 type="button"
                 onClick={() => removeImage(index)}
-                className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center text-base sm:text-lg font-bold hover:bg-red-600 active:bg-red-700 touch-manipulation shadow-lg"
+                aria-label="Remove image"
               >
                 ×
               </button>

@@ -1,40 +1,93 @@
-import { createServerClient } from '@/lib/supabase/server'
-import { notFound } from 'next/navigation'
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useParams } from 'next/navigation'
 import RestaurantForm from '@/components/RestaurantForm'
+import LoadingAnimation from '@/components/LoadingAnimation'
+import { createBrowserClient } from '@/lib/supabase/client'
 
-export default async function GuestPage({
-  params,
-}: {
-  params: { slug: string }
-}) {
-  const supabase = createServerClient()
-  
-  const { data: restaurant, error } = await supabase
-    .from('restaurants')
-    .select('id, name, slug')
-    .eq('slug', params.slug)
-    .single()
+export default function GuestPage() {
+  const params = useParams()
+  const slug = params.slug as string
+  const [restaurant, setRestaurant] = useState<{ id: string; name: string; slug: string } | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
 
-  if (error || !restaurant) {
-    notFound()
+  useEffect(() => {
+    const loadRestaurant = async () => {
+      try {
+        const supabase = createBrowserClient()
+
+        const { data, error: fetchError } = await supabase
+          .from('restaurants')
+          .select('id, name, slug')
+          .eq('slug', slug)
+          .single()
+
+        if (fetchError || !data) {
+          setError(true)
+          return
+        }
+
+        // Small delay to show the animation
+        await new Promise(resolve => setTimeout(resolve, 800))
+        
+        setRestaurant(data as { id: string; name: string; slug: string })
+      } catch (err) {
+        setError(true)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadRestaurant()
+  }, [slug])
+
+  if (loading) {
+    return <LoadingAnimation />
   }
 
-  // TypeScript type guard - restaurant is guaranteed to exist here
-  const restaurantData = restaurant as { id: string; name: string; slug: string }
-
-  return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-2xl mx-auto">
-        <div className="bg-white rounded-lg shadow-md p-6 md:p-8">
-          <h1 className="text-2xl md:text-3xl font-bold text-center mb-2">
-            {restaurantData.name}
-          </h1>
-          <p className="text-center text-gray-600 mb-8">
-            Share your dining experience with us
-          </p>
-          <RestaurantForm restaurantId={restaurantData.id} restaurantSlug={restaurantData.slug} />
+  if (error || !restaurant) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Restaurant Not Found</h1>
+          <p className="text-gray-600">The restaurant you're looking for doesn't exist.</p>
         </div>
       </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
+      {/* Mobile-optimized container */}
+      <div className="min-h-screen flex flex-col">
+        {/* Header - Mobile optimized */}
+        <div className="bg-white shadow-sm sticky top-0 z-10 px-4 py-4">
+          <h1 className="text-xl sm:text-2xl font-bold text-center text-gray-900 truncate">
+            {restaurant.name}
+          </h1>
+          <p className="text-center text-sm text-gray-600 mt-1">
+            Share your dining experience
+          </p>
+        </div>
+
+        {/* Form container - Mobile optimized with safe area padding */}
+        <div className="flex-1 px-4 py-6 pb-safe">
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 md:p-8">
+              <RestaurantForm restaurantId={restaurant.id} restaurantSlug={restaurant.slug} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Safe area for mobile devices */}
+      <style jsx global>{`
+        .pb-safe {
+          padding-bottom: env(safe-area-inset-bottom, 1rem);
+        }
+      `}</style>
     </div>
   )
 }
