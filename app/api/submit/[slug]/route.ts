@@ -79,13 +79,16 @@ export async function POST(
       )
     }
 
+    // TypeScript type guard - restaurant is guaranteed to exist here
+    const restaurantData = restaurant as { id: string }
+
     // Create submission
     const submissionId = uuidv4()
     const { data: submission, error: submissionError } = await supabase
       .from('submissions')
       .insert({
         id: submissionId,
-        restaurant_id: restaurantId,
+        restaurant_id: restaurantData.id,
         feedback: feedback?.trim() || null,
         instagram_handle: instagramHandle?.trim() || null,
         allow_marketing: allowMarketing,

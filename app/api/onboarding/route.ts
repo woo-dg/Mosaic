@@ -78,24 +78,28 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // TypeScript type guard - restaurant is guaranteed to exist here
+    type Restaurant = { id: string; name: string; slug: string }
+    const restaurantData: Restaurant = restaurant as Restaurant
+
     // Create manager_users mapping
     const { error: managerError } = await supabase
       .from('manager_users')
       .insert({
         manager_id: userId,
-        restaurant_id: restaurant.id,
+        restaurant_id: restaurantData.id,
       } as any)
 
     if (managerError) {
       // Rollback: delete restaurant if manager mapping fails
-      await supabase.from('restaurants').delete().eq('id', restaurant.id)
+      await supabase.from('restaurants').delete().eq('id', restaurantData.id)
       return NextResponse.json(
         { error: managerError.message || 'Failed to link manager' },
         { status: 500 }
       )
     }
 
-    return NextResponse.json({ success: true, restaurant })
+    return NextResponse.json({ success: true, restaurant: restaurantData })
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || 'Internal server error' },

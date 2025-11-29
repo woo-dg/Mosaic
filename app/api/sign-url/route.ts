@@ -52,12 +52,15 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // TypeScript type guard - restaurant is guaranteed to exist here
+    const restaurantData = restaurant as { id: string }
+
     // Verify the manager has access to this restaurant
     const { data: managerUser } = await supabase
       .from('manager_users')
       .select('restaurant_id')
       .eq('manager_id', userId)
-      .eq('restaurant_id', restaurant.id)
+      .eq('restaurant_id', restaurantData.id)
       .single()
 
     if (!managerUser) {
@@ -85,7 +88,7 @@ export async function GET(request: NextRequest) {
     }
 
     const submission = photo.submissions as any
-    if (!submission || submission.restaurant_id !== restaurant.id) {
+    if (!submission || submission.restaurant_id !== restaurantData.id) {
       return NextResponse.json(
         { error: 'Access denied' },
         { status: 403 }
