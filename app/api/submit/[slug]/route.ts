@@ -104,6 +104,10 @@ export async function POST(
       )
     }
 
+    // TypeScript type guard - submission is guaranteed to exist here
+    type Submission = { id: string }
+    const submissionData: Submission = submission as Submission
+
     // Upload images and create photo records
     const uploadedPhotos = []
     for (let i = 0; i < images.length; i++) {
@@ -156,7 +160,7 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      submissionId: submission.id,
+      submissionId: submissionData.id,
     })
   } catch (error: any) {
     return NextResponse.json(
