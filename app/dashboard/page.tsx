@@ -60,11 +60,15 @@ export default function DashboardPage() {
         return
       }
 
+      // TypeScript type guard - managerUser is guaranteed to exist here
+      type ManagerUser = { restaurant_id: string }
+      const managerUserData: ManagerUser = managerUser as ManagerUser
+
       // Now get the restaurant slug
       const { data: restaurant, error: restaurantError } = await supabase
         .from('restaurants')
         .select('slug')
-        .eq('id', managerUser.restaurant_id)
+        .eq('id', managerUserData.restaurant_id)
         .single()
 
       console.log('Restaurant query result:', { restaurant, restaurantError })
@@ -76,8 +80,12 @@ export default function DashboardPage() {
         return
       }
 
-      if (restaurant.slug) {
-        console.log('✅ Found restaurant! Redirecting to:', restaurant.slug)
+      // TypeScript type guard - restaurant is guaranteed to exist here
+      type Restaurant = { slug: string }
+      const restaurantData: Restaurant = restaurant as Restaurant
+
+      if (restaurantData.slug) {
+        console.log('✅ Found restaurant! Redirecting to:', restaurantData.slug)
         await new Promise(resolve => setTimeout(resolve, 500))
         window.location.href = `/${restaurant.slug}`
       } else {
