@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import RestaurantForm from '@/components/RestaurantForm'
 import LoadingAnimation from '@/components/LoadingAnimation'
+import PhotoCarousel from '@/components/PhotoCarousel'
 import { createBrowserClient } from '@/lib/supabase/client'
 
 export default function GuestPage() {
@@ -12,6 +13,8 @@ export default function GuestPage() {
   const [restaurant, setRestaurant] = useState<{ id: string; name: string; slug: string } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+  const [carouselKey, setCarouselKey] = useState(0)
+  const formRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const loadRestaurant = async () => {
@@ -58,6 +61,15 @@ export default function GuestPage() {
     )
   }
 
+  const scrollToForm = () => {
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  const handleSubmissionSuccess = () => {
+    // Force carousel to refresh by changing key
+    setCarouselKey(prev => prev + 1)
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
       {/* Mobile-optimized container */}
@@ -72,11 +84,20 @@ export default function GuestPage() {
           </p>
         </div>
 
+        {/* Photo Carousel */}
+        <div className="bg-white py-4">
+          <PhotoCarousel key={carouselKey} restaurantSlug={restaurant.slug} onUploadClick={scrollToForm} />
+        </div>
+
         {/* Form container - Mobile optimized with safe area padding */}
-        <div className="flex-1 px-4 py-6 pb-safe">
+        <div ref={formRef} className="flex-1 px-4 py-6 pb-safe">
           <div className="max-w-2xl mx-auto">
             <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 md:p-8">
-              <RestaurantForm restaurantId={restaurant.id} restaurantSlug={restaurant.slug} />
+              <div className="mb-4 pb-4 border-b border-gray-200">
+                <h2 className="text-lg font-semibold text-gray-900 mb-1">Upload Your Photos</h2>
+                <p className="text-sm text-gray-600">Share your dining experience with us</p>
+              </div>
+              <RestaurantForm restaurantId={restaurant.id} restaurantSlug={restaurant.slug} onSubmissionSuccess={handleSubmissionSuccess} />
             </div>
           </div>
         </div>

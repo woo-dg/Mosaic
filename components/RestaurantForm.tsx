@@ -8,9 +8,10 @@ import Link from 'next/link'
 interface RestaurantFormProps {
   restaurantId: string
   restaurantSlug: string
+  onSubmissionSuccess?: () => void
 }
 
-export default function RestaurantForm({ restaurantId, restaurantSlug }: RestaurantFormProps) {
+export default function RestaurantForm({ restaurantId, restaurantSlug, onSubmissionSuccess }: RestaurantFormProps) {
   const router = useRouter()
   const [images, setImages] = useState<File[]>([])
   const [feedback, setFeedback] = useState('')
@@ -62,6 +63,12 @@ export default function RestaurantForm({ restaurantId, restaurantSlug }: Restaur
       }
 
       setSuccess(true)
+      
+      // Notify parent component to refresh carousel
+      if (onSubmissionSuccess) {
+        onSubmissionSuccess()
+      }
+      
       setTimeout(() => {
         router.push(`/${restaurantSlug}/guest/thanks`)
       }, 2000)
