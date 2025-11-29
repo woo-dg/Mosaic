@@ -6,6 +6,8 @@ const isPublicRoute = createRouteMatcher([
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/(.*)/guest(.*)',  // Allow /[slug]/guest routes
+  '/api/submit/(.*)',  // Allow public submissions
+  '/api/photos/(.*)',  // Allow public photo viewing
 ])
 
 export default clerkMiddleware((auth, req) => {
