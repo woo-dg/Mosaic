@@ -66,12 +66,15 @@ export default function RestaurantDashboardPage() {
         return
       }
 
+      // TypeScript type guard - restaurant is guaranteed to exist here
+      const restaurantData = restaurant as { id: string; name: string }
+
       // Check if manager owns this restaurant
       const { data: managerUser } = await supabase
         .from('manager_users')
         .select('restaurant_id')
         .eq('manager_id', user.id)
-        .eq('restaurant_id', restaurant.id)
+        .eq('restaurant_id', restaurantData.id)
         .single()
 
       if (!managerUser) {
@@ -80,7 +83,7 @@ export default function RestaurantDashboardPage() {
         return
       }
 
-      setRestaurantName(restaurant.name)
+      setRestaurantName(restaurantData.name)
       setAuthorized(true)
     } catch (error) {
       console.error('Error checking authorization:', error)
@@ -105,6 +108,9 @@ export default function RestaurantDashboardPage() {
 
       if (!restaurant) return
 
+      // TypeScript type guard
+      const restaurantData = restaurant as { id: string }
+
       // Build query
       let query = supabase
         .from('submissions')
@@ -116,7 +122,7 @@ export default function RestaurantDashboardPage() {
           allow_marketing,
           photos(id, file_path)
         `)
-        .eq('restaurant_id', restaurant.id)
+        .eq('restaurant_id', restaurantData.id)
         .order('created_at', { ascending: false })
 
       // Apply filters
