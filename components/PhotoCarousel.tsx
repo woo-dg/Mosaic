@@ -29,22 +29,42 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
     // Setup realtime subscription
     const cleanup = setupRealtimeSubscription()
     
-    // Polling fallback in case realtime isn't enabled (poll every 5 seconds)
+    // Aggressive polling for faster updates (every 2 seconds)
     const pollInterval = setInterval(() => {
       loadPhotos()
-    }, 5000)
+    }, 2000)
+    
+    // Also refresh when page becomes visible (user switches back to tab)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        loadPhotos()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    // Refresh on window focus
+    const handleFocus = () => {
+      loadPhotos()
+    }
+    window.addEventListener('focus', handleFocus)
     
     return () => {
       if (cleanup) cleanup()
       clearInterval(pollInterval)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restaurantSlug])
 
   const loadPhotos = async () => {
     try {
-      setLoading(true)
-      const response = await fetch(`/api/photos/${restaurantSlug}`, {
+      // Don't set loading to true if we already have photos (to avoid flicker)
+      if (photos.length === 0) {
+        setLoading(true)
+      }
+      
+      const response = await fetch(`/api/photos/${restaurantSlug}?t=${Date.now()}`, {
         cache: 'no-store',
         headers: {
           'Content-Type': 'application/json',
@@ -112,25 +132,9 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
   const setupRealtimeSubscription = () => {
     const supabase = createBrowserClient()
 
-    // Subscribe to new submissions for this restaurant
-    // We'll reload photos when a new submission with allow_marketing is added
+    // Subscribe to new photos - this is more reliable than submissions
     const channel = supabase
-      .channel(`submissions:${restaurantSlug}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'submissions',
-          filter: `allow_marketing=eq.true`,
-        },
-        async (payload) => {
-          // Small delay to ensure photos are also inserted
-          setTimeout(() => {
-            loadPhotos()
-          }, 1000)
-        }
-      )
+      .channel(`photos:${restaurantSlug}`)
       .on(
         'postgres_changes',
         {
@@ -139,13 +143,16 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
           table: 'photos',
         },
         async (payload) => {
-          // Reload photos when a new one is added
+          console.log('New photo detected via realtime:', payload)
+          // Reload photos immediately when a new one is added
           setTimeout(() => {
             loadPhotos()
           }, 500)
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        console.log('Realtime subscription status:', status)
+      })
 
     return () => {
       supabase.removeChannel(channel)
