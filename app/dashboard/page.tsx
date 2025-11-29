@@ -87,7 +87,7 @@ export default function DashboardPage() {
       if (restaurantData.slug) {
         console.log('✅ Found restaurant! Redirecting to:', restaurantData.slug)
         await new Promise(resolve => setTimeout(resolve, 500))
-        window.location.href = `/${restaurant.slug}`
+        window.location.href = `/${restaurantData.slug}`
       } else {
         console.error('❌ Restaurant has no slug')
         await new Promise(resolve => setTimeout(resolve, 1000))
