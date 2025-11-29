@@ -56,6 +56,13 @@ export default function RestaurantForm({ restaurantId, restaurantSlug, onSubmiss
         body: formData,
       })
 
+      const contentType = response.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text()
+        console.error('Invalid response type:', contentType, text.substring(0, 200))
+        throw new Error('Server returned an invalid response. Please try again.')
+      }
+
       const data = await response.json()
 
       if (!response.ok) {

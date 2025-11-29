@@ -4,10 +4,11 @@ import { v4 as uuidv4 } from 'uuid'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
     const supabase = createServerClient()
+    const { slug } = await params
     const formData = await request.formData()
 
     const restaurantId = formData.get('restaurantId') as string
@@ -19,7 +20,7 @@ export async function POST(
     const images = formData.getAll('images') as File[]
 
     // Validate restaurant slug matches
-    if (restaurantSlug !== params.slug) {
+    if (restaurantSlug !== slug) {
       return NextResponse.json(
         { error: 'Invalid restaurant' },
         { status: 400 }

@@ -46,10 +46,24 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
       setLoading(true)
       const response = await fetch(`/api/photos/${restaurantSlug}`, {
         cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       })
       
       if (!response.ok) {
-        console.error('Failed to fetch photos:', response.statusText)
+        const text = await response.text()
+        console.error('Failed to fetch photos:', response.status, text)
+        setPhotos([])
+        setLoading(false)
+        return
+      }
+      
+      const contentType = response.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text()
+        console.error('Invalid response type:', contentType, text.substring(0, 100))
+        setPhotos([])
         setLoading(false)
         return
       }
