@@ -66,11 +66,13 @@ export default function SubmissionDetailPage() {
         return
       }
 
-      setSubmission(data)
+      // TypeScript type guard - data is guaranteed to exist here
+      const submissionData = data as Submission
+      setSubmission(submissionData)
 
       // Load signed URLs for all photos
       const urls: Record<string, string> = {}
-      for (const photo of data.photos) {
+      for (const photo of submissionData.photos) {
         try {
           const response = await fetch(`/api/sign-url?path=${encodeURIComponent(photo.file_path)}`)
           const urlData = await response.json()
