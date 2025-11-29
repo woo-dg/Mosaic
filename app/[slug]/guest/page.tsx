@@ -71,7 +71,7 @@ export default function GuestPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
+    <div className="min-h-screen bg-white">
       {/* Mobile-optimized container */}
       <div className="min-h-screen flex flex-col">
         {/* Header - Mobile optimized */}

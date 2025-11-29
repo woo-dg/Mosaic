@@ -38,7 +38,7 @@ export async function GET(
       .eq('restaurant_id', restaurantData.id)
       .eq('allow_marketing', true)
       .order('created_at', { ascending: false })
-      .limit(50)
+      .limit(100)
 
     if (submissionsError) {
       return NextResponse.json(

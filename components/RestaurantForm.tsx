@@ -117,7 +117,7 @@ export default function RestaurantForm({ restaurantId, restaurantSlug, onSubmiss
             id="instagram"
             type="text"
             value={instagramHandle}
-            onChange={(e) => setInstagramHandle(e.target.value.replace('@', ''))}
+            onChange={(e) => setInstagramHandle(e.target.value.replace('@', '').replace(/\s/g, ''))}
             className="w-full pl-8 pr-4 py-3 text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent touch-manipulation"
             placeholder="yourusername"
           />

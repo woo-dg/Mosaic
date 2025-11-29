@@ -23,45 +23,73 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    // Initial load
     loadPhotos()
+    
+    // Setup realtime subscription
     const cleanup = setupRealtimeSubscription()
     
-    // Polling fallback in case realtime isn't enabled (poll every 10 seconds)
+    // Polling fallback in case realtime isn't enabled (poll every 5 seconds)
     const pollInterval = setInterval(() => {
       loadPhotos()
-    }, 10000)
+    }, 5000)
     
     return () => {
       if (cleanup) cleanup()
       clearInterval(pollInterval)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restaurantSlug])
 
   const loadPhotos = async () => {
     try {
-      const response = await fetch(`/api/photos/${restaurantSlug}`)
+      setLoading(true)
+      const response = await fetch(`/api/photos/${restaurantSlug}`, {
+        cache: 'no-store',
+      })
+      
+      if (!response.ok) {
+        console.error('Failed to fetch photos:', response.statusText)
+        setLoading(false)
+        return
+      }
+      
       const data = await response.json()
 
-      if (data.photos) {
+      if (data.photos && Array.isArray(data.photos)) {
         setPhotos(data.photos)
         
-        // Load signed URLs for all photos
-        const urls: Record<string, string> = {}
-        for (const photo of data.photos) {
+        // Load signed URLs for all photos in parallel
+        const urlPromises = data.photos.map(async (photo: Photo) => {
           try {
-            const urlResponse = await fetch(`/api/photos/public-sign-url?path=${encodeURIComponent(photo.file_path)}&slug=${restaurantSlug}`)
+            const urlResponse = await fetch(
+              `/api/photos/public-sign-url?path=${encodeURIComponent(photo.file_path)}&slug=${restaurantSlug}`,
+              { cache: 'no-store' }
+            )
             const urlData = await urlResponse.json()
             if (urlData.url) {
-              urls[photo.id] = urlData.url
+              return { id: photo.id, url: urlData.url }
             }
           } catch (error) {
             console.error('Error loading image URL:', error)
           }
-        }
+          return null
+        })
+        
+        const urlResults = await Promise.all(urlPromises)
+        const urls: Record<string, string> = {}
+        urlResults.forEach((result) => {
+          if (result) {
+            urls[result.id] = result.url
+          }
+        })
         setImageUrls(urls)
+      } else {
+        setPhotos([])
       }
     } catch (error) {
       console.error('Error loading photos:', error)
+      setPhotos([])
     } finally {
       setLoading(false)
     }
@@ -110,13 +138,16 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
     }
   }
 
-  if (loading && photos.length === 0) {
+  // Show loading only on initial load when we have no photos
+  const isInitialLoad = loading && photos.length === 0
+
+  if (isInitialLoad) {
     return (
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4 px-4">
           <h2 className="text-lg font-semibold text-gray-900">Community Photos</h2>
         </div>
-        <div className="flex items-center justify-center h-48 bg-gray-100 rounded-2xl">
+        <div className="flex items-center justify-center h-48 bg-gray-50 rounded-2xl mx-4">
           <div className="text-gray-400">Loading photos...</div>
         </div>
       </div>
@@ -127,12 +158,22 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
     <div className="mb-6">
       <div className="flex items-center justify-between mb-4 px-4">
         <h2 className="text-lg font-semibold text-gray-900">Community Photos</h2>
-        <button
-          onClick={onUploadClick}
-          className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-blue-700 active:bg-blue-800 transition-all shadow-md touch-manipulation"
-        >
-          Upload Your Photo +
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => loadPhotos()}
+            disabled={loading}
+            className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-lg text-sm font-medium hover:bg-gray-100 transition-all touch-manipulation disabled:opacity-50"
+            title="Refresh photos"
+          >
+            ↻
+          </button>
+          <button
+            onClick={onUploadClick}
+            className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-blue-700 active:bg-blue-800 transition-all shadow-md touch-manipulation"
+          >
+            Upload Your Photo +
+          </button>
+        </div>
       </div>
 
       {photos.length === 0 ? (
