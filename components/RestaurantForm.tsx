@@ -126,28 +126,31 @@ export default function RestaurantForm({ restaurantId, restaurantSlug, onSubmiss
 
       <form key={formKey} onSubmit={handleSubmit} className="space-y-6">
         {/* Title */}
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Upload your favorite photos</h2>
+        <div className="text-center -mt-2">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Upload your favorite photos</h2>
         </div>
 
         {/* Image Upload */}
         <ImageUpload key={formKey} maxImages={3} onImagesChange={setImages} />
 
         {/* 5 Star Rating - Mandatory */}
-        <div className="flex justify-center gap-4 py-3">
-          {[1, 2, 3, 4, 5].map((star) => (
-            <button
-              key={star}
-              type="button"
-              onClick={() => setRating(star)}
-              className={`text-5xl sm:text-6xl transition-all duration-200 ${
-                star <= rating ? 'text-yellow-400 scale-110' : 'text-gray-300'
-              } hover:text-yellow-400 hover:scale-110`}
-              aria-label={`${star} star`}
-            >
-              ★
-            </button>
-          ))}
+        <div className="flex flex-col items-center gap-2 py-2">
+          <div className="flex justify-center gap-4">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <button
+                key={star}
+                type="button"
+                onClick={() => setRating(star)}
+                className={`text-6xl sm:text-7xl transition-all duration-200 ${
+                  star <= rating ? 'text-yellow-400 scale-110' : 'text-gray-300'
+                } hover:text-yellow-400 hover:scale-110`}
+                aria-label={`${star} star`}
+              >
+                ★
+              </button>
+            ))}
+          </div>
+          <span className="text-sm text-red-500 font-medium">* Required</span>
         </div>
 
         {/* Instagram Handle */}
@@ -205,20 +208,6 @@ export default function RestaurantForm({ restaurantId, restaurantSlug, onSubmiss
             </Link>
           </span>
         </label>
-        
-        {agreedToTerms && (
-          <label className="flex items-center space-x-3 cursor-pointer touch-manipulation pl-4">
-            <input
-              type="checkbox"
-              checked={allowMarketing}
-              onChange={(e) => setAllowMarketing(e.target.checked)}
-              className="w-5 h-5 sm:w-6 sm:h-6 text-gray-900 border-gray-300 rounded focus:ring-gray-500 flex-shrink-0"
-            />
-            <span className="text-sm sm:text-base text-gray-600">
-              Also allow for marketing use (optional)
-            </span>
-          </label>
-        )}
       </div>
 
       {error && (
