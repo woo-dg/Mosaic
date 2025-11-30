@@ -252,49 +252,9 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
     }
   }, [photos.length, currentIndex])
 
-  // Show loading only on initial load when we have no photos
-  const isInitialLoad = loading && photos.length === 0
-
-  // Don't render until mounted to prevent hydration mismatches
-  if (!mounted) {
-    return (
-      <div className="mb-6">
-        <div className="flex items-center justify-center h-[500px] sm:h-[600px] bg-gray-50 rounded-2xl mx-4">
-          <div className="text-gray-400">Loading...</div>
-        </div>
-      </div>
-    )
-  }
-
-  if (isInitialLoad) {
-    return (
-      <div className="mb-6">
-        <div className="flex items-center justify-center h-[500px] sm:h-[600px] bg-gray-50 rounded-2xl mx-4">
-          <div className="text-gray-400">Loading photos...</div>
-        </div>
-      </div>
-    )
-  }
-
-  if (photos.length === 0) {
-    return (
-      <div className="mb-6 px-4">
-        <div className="bg-gray-50 rounded-2xl p-8 text-center border-2 border-dashed border-gray-300">
-          <p className="text-gray-700 mb-4 font-medium">No photos yet. Be the first to share!</p>
-          <button
-            onClick={onUploadClick}
-            className="bg-gray-900 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gray-800 active:bg-gray-700 transition-all shadow-lg touch-manipulation"
-          >
-            Upload Your Photo +
-          </button>
-        </div>
-      </div>
-    )
-  }
-
   // Preload next and previous images aggressively
   useEffect(() => {
-    if (photos.length === 0 || typeof window === 'undefined') return
+    if (photos.length === 0 || typeof window === 'undefined' || !mounted) return
     
     const preloadImage = async (photo: Photo) => {
       if (!photo || imageUrls[photo.id]) return
@@ -330,16 +290,55 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
     const prevPrevIndex = (currentIndex - 2 + photos.length) % photos.length
     if (photos[nextNextIndex]) preloadImage(photos[nextNextIndex])
     if (photos[prevPrevIndex]) preloadImage(photos[prevPrevIndex])
-  }, [currentIndex, photos, restaurantSlug, imageUrls])
+  }, [currentIndex, photos, restaurantSlug, imageUrls, mounted])
+
+  // Show loading state (same on server and client to prevent hydration mismatch)
+  if (!mounted || (loading && photos.length === 0)) {
+    return (
+      <div className="mb-6">
+        <div className="flex items-center justify-center h-[500px] sm:h-[600px] bg-gray-50 rounded-2xl mx-4">
+          <div className="text-gray-400">Loading photos...</div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show empty state
+  if (photos.length === 0) {
+    return (
+      <div className="mb-6 px-4">
+        <div className="bg-gray-50 rounded-2xl p-8 text-center border-2 border-dashed border-gray-300">
+          <p className="text-gray-700 mb-4 font-medium">No photos yet. Be the first to share!</p>
+          <button
+            onClick={onUploadClick}
+            className="bg-gray-900 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gray-800 active:bg-gray-700 transition-all shadow-lg touch-manipulation"
+          >
+            Upload Your Photo +
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Safety check - ensure we have valid photo data
+  if (!photos || photos.length === 0 || currentIndex >= photos.length) {
+    return (
+      <div className="mb-6 px-4">
+        <div className="bg-gray-50 rounded-2xl p-8 text-center border-2 border-dashed border-gray-300">
+          <p className="text-gray-700 mb-4 font-medium">No photos yet. Be the first to share!</p>
+          <button
+            onClick={onUploadClick}
+            className="bg-gray-900 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gray-800 active:bg-gray-700 transition-all shadow-lg touch-manipulation"
+          >
+            Upload Your Photo +
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   const currentPhoto = photos[currentIndex]
   const currentImageUrl = currentPhoto ? imageUrls[currentPhoto.id] : null
-  const nextIndex = (currentIndex + 1) % photos.length
-  const prevIndex = (currentIndex - 1 + photos.length) % photos.length
-  const nextPhoto = photos[nextIndex]
-  const prevPhoto = photos[prevIndex]
-  const nextImageUrl = nextPhoto ? imageUrls[nextPhoto.id] : null
-  const prevImageUrl = prevPhoto ? imageUrls[prevPhoto.id] : null
 
   return (
     <div className="mb-6">
