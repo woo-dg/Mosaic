@@ -199,26 +199,6 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
 
   return (
     <div className="mb-6">
-      <div className="flex items-center justify-between mb-4 px-4">
-        <h2 className="text-lg font-semibold text-gray-900">Community Photos</h2>
-        <div className="flex gap-2">
-          <button
-            onClick={() => loadPhotos()}
-            disabled={loading}
-            className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-lg text-sm font-medium hover:bg-gray-100 transition-all touch-manipulation disabled:opacity-50"
-            title="Refresh photos"
-          >
-            ↻
-          </button>
-          <button
-            onClick={onUploadClick}
-            className="bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-800 active:bg-gray-700 transition-all shadow-md touch-manipulation"
-          >
-            Upload Your Photo +
-          </button>
-        </div>
-      </div>
-
       {photos.length === 0 ? (
         <div className="px-4">
           <div className="bg-gray-50 rounded-2xl p-8 text-center border-2 border-dashed border-gray-300">
@@ -232,58 +212,41 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
           </div>
         </div>
       ) : (
-        <div className="px-4">
-          {/* Instagram-style grid layout */}
-          <div className="grid grid-cols-3 gap-1 sm:gap-2">
+        <div>
+          {/* Instagram For You style - seamless grid, no gaps, no padding */}
+          <div className="grid grid-cols-3">
             {photos.map((photo, index) => (
               <div
                 key={photo.id}
-                className="relative aspect-square bg-gray-100 overflow-hidden cursor-pointer group"
-                onClick={() => {
-                  // Could open a modal or navigate to detail view
-                  onUploadClick()
-                }}
+                className="relative aspect-square bg-black overflow-hidden cursor-pointer"
               >
                 {imageUrls[photo.id] ? (
                   <Image
                     src={imageUrls[photo.id]}
                     alt={`Photo ${index + 1}`}
                     fill
-                    className="object-cover group-hover:opacity-90 transition-opacity"
-                    sizes="(max-width: 640px) 33vw, 33vw"
+                    className="object-cover"
+                    sizes="33vw"
                     priority={index < 6}
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                    <div className="text-gray-400 text-xs">Loading...</div>
+                  <div className="w-full h-full flex items-center justify-center bg-gray-900">
+                    <div className="text-gray-500 text-xs">Loading...</div>
                   </div>
                 )}
-                {/* Overlay on hover */}
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
               </div>
             ))}
 
-            {/* Upload prompt card - Instagram style */}
+            {/* Upload prompt - integrated seamlessly */}
             <div
-              className="relative aspect-square bg-gray-50 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 transition-colors group"
+              className="relative aspect-square bg-gray-900 flex flex-col items-center justify-center cursor-pointer active:bg-gray-800 transition-colors"
               onClick={onUploadClick}
             >
-              <div className="text-center p-4">
-                <div className="text-3xl mb-2 group-hover:scale-110 transition-transform">📸</div>
-                <p className="text-xs font-medium text-gray-700">Share your</p>
-                <p className="text-xs font-medium text-gray-700">experience</p>
+              <div className="text-center">
+                <div className="text-white text-5xl font-light mb-1">+</div>
+                <p className="text-white text-xs font-normal">Share</p>
               </div>
             </div>
-          </div>
-
-          {/* Upload CTA below grid */}
-          <div className="mt-4 text-center">
-            <button
-              onClick={onUploadClick}
-              className="bg-gray-900 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gray-800 active:bg-gray-700 transition-all shadow-lg touch-manipulation text-sm"
-            >
-              Upload Your Experience +
-            </button>
           </div>
         </div>
       )}
