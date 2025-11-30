@@ -141,23 +141,19 @@ export default function GuestPage() {
           onClick={() => setShowModal(false)}
         >
           <div 
-            className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900">Share Your Experience</h2>
-                <p className="text-sm text-gray-600 mt-1">Upload your photos and feedback</p>
-              </div>
-              <button
-                onClick={() => setShowModal(false)}
-                className="text-gray-400 hover:text-gray-600 text-2xl font-light w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
-                aria-label="Close modal"
-              >
-                ×
-              </button>
-            </div>
             <div className="p-6">
+              <div className="flex justify-end mb-4">
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="text-gray-400 hover:text-gray-600 text-2xl font-light w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+                  aria-label="Close modal"
+                >
+                  ×
+                </button>
+              </div>
               <RestaurantForm 
                 restaurantId={restaurant.id} 
                 restaurantSlug={restaurant.slug} 

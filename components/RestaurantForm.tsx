@@ -14,6 +14,7 @@ export default function RestaurantForm({ restaurantId, restaurantSlug, onSubmiss
   const [images, setImages] = useState<File[]>([])
   const [feedback, setFeedback] = useState('')
   const [instagramHandle, setInstagramHandle] = useState('')
+  const [rating, setRating] = useState(0)
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [allowMarketing, setAllowMarketing] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -72,6 +73,7 @@ export default function RestaurantForm({ restaurantId, restaurantSlug, onSubmiss
       setImages([])
       setFeedback('')
       setInstagramHandle('')
+      setRating(0)
       setAgreedToTerms(false)
       setAllowMarketing(false)
       setFormKey(prev => prev + 1) // Force ImageUpload to reset
@@ -117,39 +119,66 @@ export default function RestaurantForm({ restaurantId, restaurantSlug, onSubmiss
         </div>
       )}
 
-      <form key={formKey} onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
-      <ImageUpload key={formKey} maxImages={3} onImagesChange={setImages} />
+      <form key={formKey} onSubmit={handleSubmit} className="space-y-6">
+        {/* Title */}
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Upload your favorite photos</h2>
+        </div>
 
-      <div>
-        <label htmlFor="feedback" className="block text-sm font-medium text-gray-700 mb-2">
-          Feedback (Optional)
-        </label>
-        <textarea
-          id="feedback"
-          value={feedback}
-          onChange={(e) => setFeedback(e.target.value)}
-          rows={4}
-          className="w-full px-4 py-3 text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-500 focus:border-gray-400 resize-none touch-manipulation bg-white"
-          placeholder="Tell us about your experience..."
-        />
-      </div>
+        {/* Image Upload */}
+        <ImageUpload key={formKey} maxImages={3} onImagesChange={setImages} />
 
-      <div>
-        <label htmlFor="instagram" className="block text-sm font-medium text-gray-700 mb-2">
-          Instagram Handle (Optional)
-        </label>
-        <div className="relative">
-          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-base">@</span>
+        {/* 5 Star Rating */}
+        <div className="flex justify-center gap-2">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <button
+              key={star}
+              type="button"
+              onClick={() => setRating(star)}
+              className={`text-3xl transition-colors ${
+                star <= rating ? 'text-yellow-400' : 'text-gray-300'
+              } hover:text-yellow-400`}
+              aria-label={`${star} star`}
+            >
+              ★
+            </button>
+          ))}
+        </div>
+
+        {/* Instagram Handle */}
+        <div>
+          <div className="relative">
+            <span className="absolute left-0 top-1/2 transform -translate-y-1/2 text-gray-500 text-base">@</span>
+            <input
+              id="instagram"
+              type="text"
+              value={instagramHandle}
+              onChange={(e) => setInstagramHandle(e.target.value.replace('@', '').replace(/\s/g, ''))}
+              className={`w-full pl-6 pr-4 py-2 text-base border-0 border-b-2 focus:outline-none transition-colors touch-manipulation bg-transparent ${
+                instagramHandle.length > 0 
+                  ? 'border-green-500' 
+                  : 'border-gray-300 focus:border-green-500'
+              }`}
+              placeholder="your social tag"
+            />
+          </div>
+        </div>
+
+        {/* Comment field - just a line */}
+        <div>
           <input
-            id="instagram"
+            id="feedback"
             type="text"
-            value={instagramHandle}
-            onChange={(e) => setInstagramHandle(e.target.value.replace('@', '').replace(/\s/g, ''))}
-            className="w-full pl-8 pr-4 py-3 text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-500 focus:border-gray-400 touch-manipulation bg-white"
-            placeholder="yourusername"
+            value={feedback}
+            onChange={(e) => setFeedback(e.target.value)}
+            className={`w-full py-2 text-base border-0 border-b-2 focus:outline-none transition-colors touch-manipulation bg-transparent ${
+              feedback.length > 0 
+                ? 'border-green-500' 
+                : 'border-gray-300 focus:border-green-500'
+            }`}
+            placeholder="leave a comment"
           />
         </div>
-      </div>
 
       <div className="space-y-3">
         <label className="flex items-start space-x-3 cursor-pointer touch-manipulation p-4 bg-gray-50 rounded-xl border border-gray-200">
