@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { createBrowserClient } from '@/lib/supabase/client'
 import Image from 'next/image'
 
@@ -22,74 +22,16 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
   const [loading, setLoading] = useState(true)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isTransitioning, setIsTransitioning] = useState(false)
+  const [touchStart, setTouchStart] = useState<number | null>(null)
+  const [touchEnd, setTouchEnd] = useState<number | null>(null)
   const autoAdvanceTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    // Initial load
-    loadPhotos()
-    
-    // Setup realtime subscription
-    const cleanup = setupRealtimeSubscription()
-    
-    // Aggressive polling for faster updates (every 2 seconds)
-    const pollInterval = setInterval(() => {
-      loadPhotos()
-    }, 2000)
-    
-    // Also refresh when page becomes visible (user switches back to tab)
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        loadPhotos()
-      }
-    }
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    
-    // Refresh on window focus
-    const handleFocus = () => {
-      loadPhotos()
-    }
-    window.addEventListener('focus', handleFocus)
-    
-    return () => {
-      if (cleanup) cleanup()
-      clearInterval(pollInterval)
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-      window.removeEventListener('focus', handleFocus)
-      if (autoAdvanceTimerRef.current) {
-        clearInterval(autoAdvanceTimerRef.current)
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [restaurantSlug])
+  // Minimum swipe distance (in pixels)
+  const minSwipeDistance = 50
 
-  // Auto-advance carousel
-  useEffect(() => {
-    if (photos.length <= 1) return // Don't auto-advance if 1 or fewer items
-    
-    // Clear existing timer
-    if (autoAdvanceTimerRef.current) {
-      clearInterval(autoAdvanceTimerRef.current)
-    }
-    
-    // Set up auto-advance (4 seconds)
-    autoAdvanceTimerRef.current = setInterval(() => {
-      if (!isTransitioning) {
-        setIsTransitioning(true)
-        setCurrentIndex((prev) => (prev + 1) % photos.length)
-        setTimeout(() => setIsTransitioning(false), 500) // Transition duration
-      }
-    }, 4000)
-    
-    return () => {
-      if (autoAdvanceTimerRef.current) {
-        clearInterval(autoAdvanceTimerRef.current)
-      }
-    }
-  }, [photos.length, isTransitioning])
-
-  const loadPhotos = async () => {
+  const loadPhotos = useCallback(async () => {
     try {
-      // Don't set loading to true if we already have photos (to avoid flicker)
       if (photos.length === 0) {
         setLoading(true)
       }
@@ -125,16 +67,17 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
       const data = await response.json()
 
       if (data.photos && Array.isArray(data.photos)) {
-        // Only update if photos actually changed (prevent unnecessary re-renders)
+        // Only update if photos actually changed (compare IDs)
         const newPhotoIds = data.photos.map((p: Photo) => p.id).join(',')
         const currentPhotoIds = photos.map(p => p.id).join(',')
         
         if (newPhotoIds !== currentPhotoIds) {
-          setPhotos(data.photos)
+          const newPhotos = data.photos as Photo[]
+          setPhotos(newPhotos)
           
-          // Load signed URLs for new photos only
+          // Load signed URLs for new photos only (preserve existing URLs)
           const existingUrls = { ...imageUrls }
-          const urlPromises = data.photos.map(async (photo: Photo) => {
+          const urlPromises = newPhotos.map(async (photo: Photo) => {
             // Skip if we already have the URL
             if (existingUrls[photo.id]) {
               return { id: photo.id, url: existingUrls[photo.id] }
@@ -179,12 +122,14 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
         setLoading(false)
       }
     }
-  }
+  }, [restaurantSlug, photos.length, imageUrls])
 
-  const setupRealtimeSubscription = () => {
+  useEffect(() => {
+    // Initial load
+    loadPhotos()
+    
+    // Setup realtime subscription
     const supabase = createBrowserClient()
-
-    // Subscribe to new photos - this is more reliable than submissions
     const channel = supabase
       .channel(`photos:${restaurantSlug}`)
       .on(
@@ -195,35 +140,111 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
           table: 'photos',
         },
         async (payload) => {
-          console.log('New photo detected via realtime:', payload)
-          // Reload photos immediately when a new one is added
           setTimeout(() => {
             loadPhotos()
           }, 500)
         }
       )
-      .subscribe((status) => {
-        console.log('Realtime subscription status:', status)
-      })
-
+      .subscribe()
+    
+    // Polling fallback (every 3 seconds)
+    const pollInterval = setInterval(() => {
+      loadPhotos()
+    }, 3000)
+    
+    // Refresh when page becomes visible
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        loadPhotos()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    // Refresh on window focus
+    const handleFocus = () => {
+      loadPhotos()
+    }
+    window.addEventListener('focus', handleFocus)
+    
     return () => {
       supabase.removeChannel(channel)
+      clearInterval(pollInterval)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
+      if (autoAdvanceTimerRef.current) {
+        clearInterval(autoAdvanceTimerRef.current)
+      }
+    }
+  }, [restaurantSlug, loadPhotos])
+
+  // Auto-advance slideshow
+  useEffect(() => {
+    if (photos.length <= 1 || isTransitioning) return
+    
+    // Clear existing timer
+    if (autoAdvanceTimerRef.current) {
+      clearInterval(autoAdvanceTimerRef.current)
+    }
+    
+    // Set up auto-advance (4 seconds)
+    autoAdvanceTimerRef.current = setInterval(() => {
+      if (!isTransitioning) {
+        goToNext()
+      }
+    }, 4000)
+    
+    return () => {
+      if (autoAdvanceTimerRef.current) {
+        clearInterval(autoAdvanceTimerRef.current)
+      }
+    }
+  }, [photos.length, isTransitioning, currentIndex])
+
+  const goToNext = useCallback(() => {
+    if (photos.length === 0 || isTransitioning) return
+    setIsTransitioning(true)
+    setCurrentIndex((prev) => (prev + 1) % photos.length)
+    setTimeout(() => setIsTransitioning(false), 300)
+  }, [photos.length, isTransitioning])
+
+  const goToPrevious = useCallback(() => {
+    if (photos.length === 0 || isTransitioning) return
+    setIsTransitioning(true)
+    setCurrentIndex((prev) => (prev - 1 + photos.length) % photos.length)
+    setTimeout(() => setIsTransitioning(false), 300)
+  }, [photos.length, isTransitioning])
+
+  // Touch handlers for swipe
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null)
+    setTouchStart(e.targetTouches[0].clientX)
+  }
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX)
+  }
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return
+    
+    const distance = touchStart - touchEnd
+    const isLeftSwipe = distance > minSwipeDistance
+    const isRightSwipe = distance < -minSwipeDistance
+
+    if (isLeftSwipe) {
+      goToNext()
+    }
+    if (isRightSwipe) {
+      goToPrevious()
     }
   }
 
-  // Get items for carousel display (current, left, right)
-  const getCarouselItems = () => {
-    if (photos.length === 0) return []
-    
-    const items = [...photos]
-    const current = items[currentIndex]
-    const left = items[(currentIndex - 1 + items.length) % items.length]
-    const right = items[(currentIndex + 1) % items.length]
-    
-    return [left, current, right]
-  }
-
-  const carouselItems = getCarouselItems()
+  // Reset current index when photos change significantly
+  useEffect(() => {
+    if (photos.length > 0 && currentIndex >= photos.length) {
+      setCurrentIndex(0)
+    }
+  }, [photos.length, currentIndex])
 
   // Show loading only on initial load when we have no photos
   const isInitialLoad = loading && photos.length === 0
@@ -231,7 +252,7 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
   if (isInitialLoad) {
     return (
       <div className="mb-6">
-        <div className="flex items-center justify-center h-64 bg-gray-50 rounded-2xl mx-4">
+        <div className="flex items-center justify-center h-[500px] sm:h-[600px] bg-gray-50 rounded-2xl mx-4">
           <div className="text-gray-400">Loading photos...</div>
         </div>
       </div>
@@ -254,122 +275,109 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
     )
   }
 
+  const currentPhoto = photos[currentIndex]
+  const currentImageUrl = currentPhoto ? imageUrls[currentPhoto.id] : null
+
   return (
     <div className="mb-6">
-      <div className="relative w-full h-[500px] sm:h-[600px] overflow-hidden">
-        {/* Carousel container */}
-        <div className="flex items-center justify-center h-full relative">
-          {/* Left item (small) */}
+      <div 
+        ref={containerRef}
+        className="relative w-full h-[500px] sm:h-[600px] overflow-hidden bg-black rounded-2xl mx-4"
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+      >
+        {/* Main image */}
+        {currentImageUrl ? (
           <div 
-            key={`left-${currentIndex}`}
-            className={`absolute left-4 sm:left-8 w-[120px] sm:w-[150px] h-[160px] sm:h-[200px] z-10 opacity-60 transition-all duration-500 ease-in-out ${
-              isTransitioning ? 'opacity-0 scale-90' : 'opacity-60 scale-100'
+            key={currentPhoto.id}
+            className={`absolute inset-0 transition-opacity duration-300 ${
+              isTransitioning ? 'opacity-0' : 'opacity-100'
             }`}
           >
-            {carouselItems[0] && imageUrls[carouselItems[0].id] ? (
-              <div className="relative w-full h-full rounded-lg overflow-hidden shadow-lg">
-                <Image
-                  src={imageUrls[carouselItems[0].id]}
-                  alt="Previous photo"
-                  fill
-                  className="object-cover"
-                  sizes="150px"
-                />
-              </div>
-            ) : (
-              <div className="w-full h-full bg-gray-200 rounded-lg flex items-center justify-center">
-                <div className="text-gray-400 text-xs">Loading...</div>
-              </div>
-            )}
+            <Image
+              src={currentImageUrl}
+              alt={`Photo ${currentIndex + 1}`}
+              fill
+              className="object-contain"
+              sizes="100vw"
+              priority
+              onLoad={() => {
+                // Image loaded successfully
+              }}
+            />
           </div>
-
-          {/* Center item (large) */}
-          <div 
-            key={`center-${currentIndex}`}
-            className={`relative w-[280px] sm:w-[350px] h-[400px] sm:h-[500px] z-20 mx-4 transition-all duration-500 ease-in-out ${
-              isTransitioning ? 'scale-95 opacity-90' : 'scale-100 opacity-100'
-            }`}
-          >
-            {carouselItems[1] && imageUrls[carouselItems[1].id] ? (
-              <div className="relative w-full h-full rounded-xl overflow-hidden shadow-2xl">
-                <Image
-                  src={imageUrls[carouselItems[1].id]}
-                  alt="Current photo"
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 640px) 280px, 350px"
-                  priority
-                />
-                {/* Optional: Instagram handle overlay */}
-                {carouselItems[1].instagram_handle && (
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
-                    <p className="text-white text-sm font-semibold">
-                      @{carouselItems[1].instagram_handle}
-                    </p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="w-full h-full bg-gray-200 rounded-xl flex items-center justify-center">
-                <div className="text-gray-400">Loading...</div>
-              </div>
-            )}
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+            <div className="text-gray-400">Loading...</div>
           </div>
+        )}
 
-          {/* Right item (small) */}
-          <div 
-            key={`right-${currentIndex}`}
-            className={`absolute right-4 sm:right-8 w-[120px] sm:w-[150px] h-[160px] sm:h-[200px] z-10 opacity-60 transition-all duration-500 ease-in-out ${
-              isTransitioning ? 'opacity-0 scale-90' : 'opacity-60 scale-100'
-            }`}
-          >
-            {carouselItems[2] && imageUrls[carouselItems[2].id] ? (
-              <div className="relative w-full h-full rounded-lg overflow-hidden shadow-lg">
-                <Image
-                  src={imageUrls[carouselItems[2].id]}
-                  alt="Next photo"
-                  fill
-                  className="object-cover"
-                  sizes="150px"
-                />
-              </div>
-            ) : (
-              <div className="w-full h-full bg-gray-200 rounded-lg flex items-center justify-center">
-                <div className="text-gray-400 text-xs">Loading...</div>
-              </div>
-            )}
+        {/* Instagram handle overlay */}
+        {currentPhoto?.instagram_handle && (
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-6 pb-8">
+            <p className="text-white text-base font-semibold">
+              @{currentPhoto.instagram_handle}
+            </p>
           </div>
-        </div>
+        )}
 
-        {/* Upload prompt button - floating */}
-        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-30">
+        {/* Navigation arrows (desktop) */}
+        {photos.length > 1 && (
+          <>
+            <button
+              onClick={goToPrevious}
+              className="hidden sm:flex absolute left-4 top-1/2 -translate-y-1/2 z-30 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full p-3 transition-all touch-manipulation"
+              aria-label="Previous photo"
+            >
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <button
+              onClick={goToNext}
+              className="hidden sm:flex absolute right-4 top-1/2 -translate-y-1/2 z-30 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full p-3 transition-all touch-manipulation"
+              aria-label="Next photo"
+            >
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </>
+        )}
+
+        {/* Dots indicator */}
+        {photos.length > 1 && (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex gap-2">
+            {photos.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => {
+                  setIsTransitioning(true)
+                  setCurrentIndex(index)
+                  setTimeout(() => setIsTransitioning(false), 300)
+                }}
+                className={`h-2 rounded-full transition-all duration-300 ${
+                  index === currentIndex 
+                    ? 'bg-white w-8' 
+                    : 'bg-white/50 w-2 hover:bg-white/70'
+                }`}
+                aria-label={`Go to photo ${index + 1}`}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Upload button */}
+        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-30">
           <button
             onClick={onUploadClick}
-            className="bg-gray-900 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gray-800 active:bg-gray-700 transition-all shadow-lg touch-manipulation text-sm"
+            className="bg-white text-gray-900 px-6 py-3 rounded-xl font-semibold hover:bg-gray-100 active:bg-gray-200 transition-all shadow-lg touch-manipulation text-sm"
           >
             Share Your Experience +
           </button>
-        </div>
-
-        {/* Dots indicator */}
-        <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-30 flex gap-2">
-          {photos.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => {
-                setIsTransitioning(true)
-                setCurrentIndex(index)
-                setTimeout(() => setIsTransitioning(false), 500)
-              }}
-              className={`w-2 h-2 rounded-full transition-all ${
-                index === currentIndex ? 'bg-white w-6' : 'bg-white/50'
-              }`}
-              aria-label={`Go to photo ${index + 1}`}
-            />
-          ))}
         </div>
       </div>
     </div>
   )
 }
-
