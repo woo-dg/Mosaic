@@ -76,17 +76,38 @@ export default function GuestPage() {
     <div className="min-h-screen bg-white">
       {/* Mobile-optimized container */}
       <div className="min-h-screen flex flex-col">
-        {/* Header - Dark navigation bar style */}
-        <div className="bg-black sticky top-0 z-10 px-4 py-4">
-          <h1 className="text-xl sm:text-2xl font-bold text-white truncate">
-            {restaurant.name}
-          </h1>
+        {/* Header - Rounded, centered, sticky bar */}
+        <div className="sticky top-0 z-10 px-4 pt-4 pb-2">
+          <div className="max-w-4xl mx-auto">
+            <div className="bg-black rounded-full px-6 py-3 flex items-center justify-center">
+              <h1 className="text-lg sm:text-xl font-bold text-white">
+                {restaurant.name}
+              </h1>
+            </div>
+          </div>
         </div>
 
         {/* Photo Carousel - Centered with padding */}
         <div className="bg-white py-4 px-4">
           <div className="max-w-4xl mx-auto">
             <PhotoCarousel key={carouselKey} restaurantSlug={restaurant.slug} onUploadClick={handleUploadClick} />
+          </div>
+        </div>
+
+        {/* Stacked text section */}
+        <div className="bg-white px-4 pb-8">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center space-y-1">
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
+                Share Photos
+              </h2>
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
+                Get Featured
+              </h2>
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
+                Help Restaurants
+              </h2>
+            </div>
           </div>
         </div>
       </div>
