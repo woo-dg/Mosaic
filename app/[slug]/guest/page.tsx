@@ -77,9 +77,31 @@ export default function GuestPage() {
       {/* Mobile-optimized container */}
       <div className="min-h-screen flex flex-col">
         {/* Header - Rounded, centered, sticky bar */}
-        <div className="sticky top-0 z-10 px-4 pt-4 pb-2">
+        <div className="sticky top-0 z-50 px-4 pt-4 pb-2 bg-white">
           <div className="max-w-4xl mx-auto">
-            <div className="bg-black rounded-2xl px-6 py-3 flex items-center justify-center">
+            <div className="bg-black rounded-2xl px-6 py-3 flex items-center justify-center gap-4">
+              {/* Shattered M logo */}
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-white">
+                    {/* Shattered M - Left piece */}
+                    <path d="M3 20 L3 6 L7 10 L7 20" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" opacity="0.95"/>
+                    {/* Center left piece */}
+                    <path d="M7 10 L11 2 L11 20" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" opacity="0.9"/>
+                    {/* Center right piece */}
+                    <path d="M11 2 L15 10 L15 20" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" opacity="0.9"/>
+                    {/* Right piece */}
+                    <path d="M15 10 L19 6 L19 20" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" opacity="0.95"/>
+                    {/* Shatter lines - creating the broken effect */}
+                    <path d="M5 12 L5 16" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" opacity="0.7"/>
+                    <path d="M9 4 L9 8" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" opacity="0.7"/>
+                    <path d="M13 4 L13 8" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" opacity="0.7"/>
+                    <path d="M17 12 L17 16" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" opacity="0.7"/>
+                  </svg>
+                </div>
+                {/* Vertical line */}
+                <div className="h-6 w-px bg-white/50"></div>
+              </div>
               <h1 className="text-lg sm:text-xl font-bold text-white">
                 {restaurant.name}
               </h1>
