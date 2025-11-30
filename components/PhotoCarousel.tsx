@@ -210,12 +210,12 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
           >
             ↻
           </button>
-        <button
-          onClick={onUploadClick}
-          className="bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-800 active:bg-gray-700 transition-all shadow-md touch-manipulation"
-        >
-          Upload Your Photo +
-        </button>
+          <button
+            onClick={onUploadClick}
+            className="bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-800 active:bg-gray-700 transition-all shadow-md touch-manipulation"
+          >
+            Upload Your Photo +
+          </button>
         </div>
       </div>
 
@@ -232,94 +232,61 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
           </div>
         </div>
       ) : (
-        <div
-          ref={scrollContainerRef}
-          className="flex gap-4 overflow-x-auto px-4 pb-4 scrollbar-hide"
-          style={{
-            scrollSnapType: 'x mandatory',
-            WebkitOverflowScrolling: 'touch',
-          }}
-        >
-          {photos.map((photo, index) => (
-            <div
-              key={photo.id}
-              className="flex-shrink-0 w-[280px] sm:w-[320px] rounded-2xl overflow-hidden shadow-lg bg-white border border-gray-100"
-              style={{ scrollSnapAlign: 'start' }}
-            >
-              {/* Image Container - styled like the reference image */}
-              <div className="relative w-full h-[200px] sm:h-[240px] bg-gray-100 overflow-hidden">
+        <div className="px-4">
+          {/* Instagram-style grid layout */}
+          <div className="grid grid-cols-3 gap-1 sm:gap-2">
+            {photos.map((photo, index) => (
+              <div
+                key={photo.id}
+                className="relative aspect-square bg-gray-100 overflow-hidden cursor-pointer group"
+                onClick={() => {
+                  // Could open a modal or navigate to detail view
+                  onUploadClick()
+                }}
+              >
                 {imageUrls[photo.id] ? (
                   <Image
                     src={imageUrls[photo.id]}
                     alt={`Photo ${index + 1}`}
                     fill
-                    className="object-cover"
-                    sizes="(max-width: 640px) 280px, 320px"
-                    priority={index < 3}
-                    onLoad={() => {
-                      // Image loaded successfully
-                    }}
+                    className="object-cover group-hover:opacity-90 transition-opacity"
+                    sizes="(max-width: 640px) 33vw, 33vw"
+                    priority={index < 6}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                    <div className="text-gray-400 text-sm">Loading...</div>
+                    <div className="text-gray-400 text-xs">Loading...</div>
                   </div>
                 )}
+                {/* Overlay on hover */}
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
               </div>
+            ))}
 
-              {/* Card Content - styled like reference */}
-              <div className="p-4 bg-white">
-                {photo.instagram_handle && (
-                  <div className="flex items-center gap-1 mb-2">
-                    <span className="text-gray-500 text-xs">@</span>
-                    <span className="text-sm font-semibold text-gray-900">
-                      {photo.instagram_handle}
-                    </span>
-                  </div>
-                )}
-                <p className="text-xs text-gray-500 font-medium">
-                  {new Date(photo.created_at).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                  })}
-                </p>
+            {/* Upload prompt card - Instagram style */}
+            <div
+              className="relative aspect-square bg-gray-50 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 transition-colors group"
+              onClick={onUploadClick}
+            >
+              <div className="text-center p-4">
+                <div className="text-3xl mb-2 group-hover:scale-110 transition-transform">📸</div>
+                <p className="text-xs font-medium text-gray-700">Share your</p>
+                <p className="text-xs font-medium text-gray-700">experience</p>
               </div>
             </div>
-          ))}
+          </div>
 
-          {/* Upload Card - Always visible at the end - styled like reference */}
-          <div
-            className="flex-shrink-0 w-[280px] sm:w-[320px] rounded-2xl overflow-hidden shadow-lg bg-gray-50 border-2 border-gray-200"
-            style={{ scrollSnapAlign: 'start' }}
-          >
-            <div className="h-[200px] sm:h-[240px] flex items-center justify-center bg-gray-100">
-              <div className="text-center px-4">
-                <div className="text-5xl mb-3">📸</div>
-                <p className="text-sm font-semibold text-gray-800">Share your moment</p>
-                <p className="text-xs text-gray-600 mt-1">Be part of the community</p>
-              </div>
-            </div>
-            <div className="p-4 bg-white">
-              <button
-                onClick={onUploadClick}
-                className="w-full bg-gray-900 text-white py-3 px-4 rounded-xl font-semibold hover:bg-gray-800 active:bg-gray-700 transition-all shadow-lg touch-manipulation text-sm"
-              >
-                Upload Your Photo +
-              </button>
-            </div>
+          {/* Upload CTA below grid */}
+          <div className="mt-4 text-center">
+            <button
+              onClick={onUploadClick}
+              className="bg-gray-900 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gray-800 active:bg-gray-700 transition-all shadow-lg touch-manipulation text-sm"
+            >
+              Upload Your Experience +
+            </button>
           </div>
         </div>
       )}
-
-      <style jsx>{`
-        .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-      `}</style>
     </div>
   )
 }
