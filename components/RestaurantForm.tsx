@@ -61,14 +61,26 @@ export default function RestaurantForm({ restaurantId, restaurantSlug, onSubmiss
         body: formData,
       })
 
-      const contentType = response.headers.get('content-type')
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text()
-        console.error('Invalid response type:', contentType, text.substring(0, 200))
-        throw new Error('Server returned an invalid response. Please try again.')
+      // Get response as text first to handle both JSON and non-JSON responses
+      const responseText = await response.text()
+      const contentType = response.headers.get('content-type') || ''
+      
+      let data
+      if (contentType.includes('application/json')) {
+        try {
+          data = JSON.parse(responseText)
+        } catch (parseError) {
+          console.error('Failed to parse JSON:', parseError)
+          console.error('Response text:', responseText.substring(0, 500))
+          throw new Error('Server returned invalid JSON. Please try again.')
+        }
+      } else {
+        // If not JSON, log the error and throw
+        console.error('Invalid response type:', contentType)
+        console.error('Response status:', response.status)
+        console.error('Response text:', responseText.substring(0, 500))
+        throw new Error(`Server error (${response.status}): ${responseText.substring(0, 100)}`)
       }
-
-      const data = await response.json()
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to submit')

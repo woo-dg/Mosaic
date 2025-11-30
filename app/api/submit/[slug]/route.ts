@@ -14,7 +14,8 @@ export async function POST(
     try {
       const resolvedParams = await params
       slug = resolvedParams.slug
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Error resolving params:', error)
       return NextResponse.json(
         { error: 'Invalid request parameters' },
         { 
