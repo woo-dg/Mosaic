@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import RestaurantForm from '@/components/RestaurantForm'
 import LoadingAnimation from '@/components/LoadingAnimation'
-import PhotoCarousel from '@/components/PhotoCarousel'
+import PhotoGrid from '@/components/PhotoGrid'
 import { createBrowserClient } from '@/lib/supabase/client'
 
 export default function GuestPage() {
@@ -117,27 +117,10 @@ export default function GuestPage() {
           </div>
         </div>
 
-        {/* Photo Carousel - Centered with padding */}
-        <div className="bg-white py-4 px-4">
+        {/* Photo Grid - Instagram For You Page Style */}
+        <div className="bg-white py-2 sm:py-4 px-1 sm:px-2 pb-20">
           <div className="max-w-4xl mx-auto">
-            <PhotoCarousel key={carouselKey} restaurantSlug={restaurant.slug} onUploadClick={handleUploadClick} />
-          </div>
-        </div>
-
-        {/* Stacked text section */}
-        <div className="bg-white px-4 pb-8">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center space-y-1">
-              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
-                Share Photos
-              </h2>
-              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
-                Get Featured
-              </h2>
-              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
-                Help Restaurants
-              </h2>
-            </div>
+            <PhotoGrid key={carouselKey} restaurantSlug={restaurant.slug} onUploadClick={handleUploadClick} />
           </div>
         </div>
       </div>
