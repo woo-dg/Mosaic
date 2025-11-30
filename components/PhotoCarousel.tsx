@@ -307,7 +307,7 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
         const urlData = await urlResponse.json()
         if (urlData.url) {
           // Preload the actual image
-          const img = new Image()
+          const img = document.createElement('img')
           img.src = urlData.url
           img.onload = () => {
             setImageUrls(prev => ({ ...prev, [photo.id]: urlData.url }))
