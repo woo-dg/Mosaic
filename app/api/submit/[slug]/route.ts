@@ -17,7 +17,10 @@ export async function POST(
     } catch (error) {
       return NextResponse.json(
         { error: 'Invalid request parameters' },
-        { status: 400 }
+        { 
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        }
       )
     }
 
@@ -29,7 +32,10 @@ export async function POST(
     } catch (error) {
       return NextResponse.json(
         { error: 'Failed to parse form data' },
-        { status: 400 }
+        { 
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        }
       )
     }
 
@@ -44,7 +50,10 @@ export async function POST(
     if (!restaurantId || !restaurantSlug) {
       return NextResponse.json(
         { error: 'Missing required fields' },
-        { status: 400 }
+        { 
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        }
       )
     }
 
@@ -63,21 +72,30 @@ export async function POST(
     if (!agreedPrivate) {
       return NextResponse.json(
         { error: 'Consent is required' },
-        { status: 400 }
+        { 
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        }
       )
     }
 
     if (images.length === 0) {
       return NextResponse.json(
         { error: 'At least one image is required' },
-        { status: 400 }
+        { 
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        }
       )
     }
 
     if (images.length > 3) {
       return NextResponse.json(
         { error: 'Maximum 3 images allowed' },
-        { status: 400 }
+        { 
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        }
       )
     }
 
@@ -86,13 +104,19 @@ export async function POST(
       if (!image.type.startsWith('image/')) {
         return NextResponse.json(
           { error: 'Only image files are allowed' },
-          { status: 400 }
+          { 
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          }
         )
       }
       if (image.size > 5 * 1024 * 1024) {
         return NextResponse.json(
           { error: 'Each image must be less than 5MB' },
-          { status: 400 }
+          { 
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          }
         )
       }
     }
@@ -108,7 +132,10 @@ export async function POST(
     if (restaurantError || !restaurant) {
       return NextResponse.json(
         { error: 'Restaurant not found' },
-        { status: 404 }
+        { 
+          status: 404,
+          headers: { 'Content-Type': 'application/json' }
+        }
       )
     }
 
@@ -133,7 +160,10 @@ export async function POST(
     if (submissionError || !submission) {
       return NextResponse.json(
         { error: submissionError?.message || 'Failed to create submission' },
-        { status: 500 }
+        { 
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        }
       )
     }
 
@@ -166,7 +196,10 @@ export async function POST(
         await supabase.from('submissions').delete().eq('id', submissionId)
         return NextResponse.json(
           { error: uploadError.message || 'Failed to upload image' },
-          { status: 500 }
+          { 
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+          }
         )
       }
 
@@ -184,7 +217,10 @@ export async function POST(
         await supabase.from('submissions').delete().eq('id', submissionId)
         return NextResponse.json(
           { error: photoError.message || 'Failed to save photo record' },
-          { status: 500 }
+          { 
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+          }
         )
       }
 
@@ -204,7 +240,10 @@ export async function POST(
         error: error?.message || 'Internal server error',
         details: process.env.NODE_ENV === 'development' ? error?.stack : undefined
       },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      }
     )
   }
 }

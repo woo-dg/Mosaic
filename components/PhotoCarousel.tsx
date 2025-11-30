@@ -533,7 +533,7 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
         <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-30">
           <button
             onClick={onUploadClick}
-            className="bg-white text-gray-900 px-6 py-3 rounded-xl font-semibold hover:bg-gray-100 active:bg-gray-200 transition-all shadow-lg touch-manipulation text-sm"
+            className="bg-white text-gray-900 px-4 py-2 rounded-xl font-semibold hover:bg-gray-100 active:bg-gray-200 transition-all shadow-lg touch-manipulation text-xs"
           >
             Share Your Experience +
           </button>
