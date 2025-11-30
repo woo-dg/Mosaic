@@ -74,10 +74,10 @@ export async function POST(
       )
     }
 
-    if (images.length > 3) {
+    if (images.length > 5) {
       return NextResponse.json(
-        { error: 'Maximum 3 images allowed' },
-        { status: 400 }
+        { error: 'Maximum 5 images allowed' },
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
       )
     }
 

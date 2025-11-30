@@ -211,3 +211,4 @@ If you encounter issues:
 3. Check Supabase logs for database errors
 4. Verify all environment variables are set correctly
 
+

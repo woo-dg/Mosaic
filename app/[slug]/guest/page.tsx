@@ -61,13 +61,19 @@ export default function GuestPage() {
     )
   }
 
-  const scrollToForm = () => {
-    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  const [showUploadModal, setShowUploadModal] = useState(false)
+
+  const handleUploadClick = () => {
+    setShowUploadModal(true)
   }
 
   const handleSubmissionSuccess = () => {
     // Force carousel to refresh by changing key
     setCarouselKey(prev => prev + 1)
+    // Close modal after a brief delay
+    setTimeout(() => {
+      setShowUploadModal(false)
+    }, 500)
   }
 
   return (
@@ -85,30 +91,30 @@ export default function GuestPage() {
         </div>
 
         {/* Photo Carousel */}
-        <div className="bg-white py-4">
-          <PhotoCarousel key={carouselKey} restaurantSlug={restaurant.slug} onUploadClick={scrollToForm} />
-        </div>
-
-        {/* Form container - Mobile optimized with safe area padding */}
-        <div ref={formRef} className="flex-1 px-4 py-6 pb-safe">
-          <div className="max-w-2xl mx-auto">
-            <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 md:p-8">
-              <div className="mb-4 pb-4 border-b border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-900 mb-1">Upload Your Photos</h2>
-                <p className="text-sm text-gray-600">Share your dining experience with us</p>
-              </div>
-              <RestaurantForm restaurantId={restaurant.id} restaurantSlug={restaurant.slug} onSubmissionSuccess={handleSubmissionSuccess} />
-            </div>
-          </div>
+        <div className="bg-white py-4 flex-1">
+          <PhotoCarousel key={carouselKey} restaurantSlug={restaurant.slug} onUploadClick={handleUploadClick} />
         </div>
       </div>
 
-      {/* Safe area for mobile devices */}
-      <style jsx global>{`
-        .pb-safe {
-          padding-bottom: env(safe-area-inset-bottom, 1rem);
-        }
-      `}</style>
+      {/* Upload Modal */}
+      {showUploadModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={() => setShowUploadModal(false)}
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <RestaurantForm 
+              restaurantId={restaurant.id} 
+              restaurantSlug={restaurant.slug} 
+              onSubmissionSuccess={handleSubmissionSuccess}
+              onClose={() => setShowUploadModal(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

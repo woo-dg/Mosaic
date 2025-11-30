@@ -177,6 +177,33 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
     }
   }, [restaurantSlug, loadPhotos])
 
+  // Preload images for smoother transitions
+  useEffect(() => {
+    if (photos.length === 0) return
+    
+    // Preload next and previous images
+    const nextIndex = (currentIndex + 1) % photos.length
+    const prevIndex = (currentIndex - 1 + photos.length) % photos.length
+    
+    const preloadImage = (photo: Photo) => {
+      if (!photo || imageUrls[photo.id]) return
+      
+      fetch(`/api/photos/public-sign-url?path=${encodeURIComponent(photo.file_path)}&slug=${restaurantSlug}`, {
+        cache: 'no-store'
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.url) {
+            setImageUrls(prev => ({ ...prev, [photo.id]: data.url }))
+          }
+        })
+        .catch(err => console.error('Error preloading image:', err))
+    }
+    
+    if (photos[nextIndex]) preloadImage(photos[nextIndex])
+    if (photos[prevIndex]) preloadImage(photos[prevIndex])
+  }, [currentIndex, photos, restaurantSlug, imageUrls])
+
   // Auto-advance slideshow
   useEffect(() => {
     if (photos.length <= 1 || isTransitioning) return
@@ -198,7 +225,7 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
         clearInterval(autoAdvanceTimerRef.current)
       }
     }
-  }, [photos.length, isTransitioning, currentIndex])
+  }, [photos.length, isTransitioning, goToNext])
 
   const goToNext = useCallback(() => {
     if (photos.length === 0 || isTransitioning) return
@@ -277,6 +304,14 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
 
   const currentPhoto = photos[currentIndex]
   const currentImageUrl = currentPhoto ? imageUrls[currentPhoto.id] : null
+  
+  // Preload next and previous images
+  const nextIndex = (currentIndex + 1) % photos.length
+  const prevIndex = (currentIndex - 1 + photos.length) % photos.length
+  const nextPhoto = photos[nextIndex]
+  const prevPhoto = photos[prevIndex]
+  const nextImageUrl = nextPhoto ? imageUrls[nextPhoto.id] : null
+  const prevImageUrl = prevPhoto ? imageUrls[prevPhoto.id] : null
 
   return (
     <div className="mb-6">
@@ -287,24 +322,33 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
       >
+        {/* Preload next and previous images (hidden) */}
+        {nextImageUrl && (
+          <div className="absolute opacity-0 pointer-events-none" style={{ width: 0, height: 0 }}>
+            <Image src={nextImageUrl} alt="preload next" width={1} height={1} />
+          </div>
+        )}
+        {prevImageUrl && (
+          <div className="absolute opacity-0 pointer-events-none" style={{ width: 0, height: 0 }}>
+            <Image src={prevImageUrl} alt="preload prev" width={1} height={1} />
+          </div>
+        )}
+
         {/* Main image */}
         {currentImageUrl ? (
           <div 
             key={currentPhoto.id}
-            className={`absolute inset-0 transition-opacity duration-300 ${
-              isTransitioning ? 'opacity-0' : 'opacity-100'
-            }`}
+            className="absolute inset-0"
           >
             <Image
               src={currentImageUrl}
               alt={`Photo ${currentIndex + 1}`}
               fill
-              className="object-contain"
+              className={`object-contain transition-opacity duration-500 ease-in-out ${
+                isTransitioning ? 'opacity-0' : 'opacity-100'
+              }`}
               sizes="100vw"
               priority
-              onLoad={() => {
-                // Image loaded successfully
-              }}
             />
           </div>
         ) : (

@@ -94,3 +94,4 @@ CREATE POLICY "manager_read_own_mapping" ON public.manager_users
     FOR SELECT
     USING (auth.jwt() ->> 'sub' = manager_id);
 
+
