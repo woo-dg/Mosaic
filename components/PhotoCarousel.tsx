@@ -344,7 +344,7 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
     <div className="mb-6">
       <div 
         ref={containerRef}
-        className="relative w-full h-[500px] sm:h-[600px] overflow-hidden bg-gray-900 rounded-2xl mx-4"
+        className="relative w-full h-[500px] sm:h-[600px] overflow-hidden bg-gray-900 rounded-2xl"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}

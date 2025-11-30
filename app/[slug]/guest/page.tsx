@@ -76,19 +76,18 @@ export default function GuestPage() {
     <div className="min-h-screen bg-white">
       {/* Mobile-optimized container */}
       <div className="min-h-screen flex flex-col">
-        {/* Header - Mobile optimized */}
-        <div className="bg-white shadow-sm sticky top-0 z-10 px-4 py-4">
-          <h1 className="text-xl sm:text-2xl font-bold text-center text-gray-900 truncate">
+        {/* Header - Dark navigation bar style */}
+        <div className="bg-black sticky top-0 z-10 px-4 py-4">
+          <h1 className="text-xl sm:text-2xl font-bold text-white truncate">
             {restaurant.name}
           </h1>
-          <p className="text-center text-sm text-gray-600 mt-1">
-            Share your dining experience
-          </p>
         </div>
 
-        {/* Photo Carousel */}
-        <div className="bg-white py-4">
-          <PhotoCarousel key={carouselKey} restaurantSlug={restaurant.slug} onUploadClick={handleUploadClick} />
+        {/* Photo Carousel - Centered with padding */}
+        <div className="bg-white py-4 px-4">
+          <div className="max-w-4xl mx-auto">
+            <PhotoCarousel key={carouselKey} restaurantSlug={restaurant.slug} onUploadClick={handleUploadClick} />
+          </div>
         </div>
       </div>
 
