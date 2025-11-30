@@ -177,48 +177,6 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
     }
   }, [restaurantSlug, loadPhotos])
 
-  // Define navigation functions before they're used
-  const goToNext = useCallback(() => {
-    if (photos.length === 0 || isTransitioning) return
-    setIsTransitioning(true)
-    setCurrentIndex((prev) => (prev + 1) % photos.length)
-    setTimeout(() => setIsTransitioning(false), 300)
-  }, [photos.length, isTransitioning])
-
-  const goToPrevious = useCallback(() => {
-    if (photos.length === 0 || isTransitioning) return
-    setIsTransitioning(true)
-    setCurrentIndex((prev) => (prev - 1 + photos.length) % photos.length)
-    setTimeout(() => setIsTransitioning(false), 300)
-  }, [photos.length, isTransitioning])
-
-  // Preload images for smoother transitions
-  useEffect(() => {
-    if (photos.length === 0) return
-    
-    // Preload next and previous images
-    const nextIndex = (currentIndex + 1) % photos.length
-    const prevIndex = (currentIndex - 1 + photos.length) % photos.length
-    
-    const preloadImage = (photo: Photo) => {
-      if (!photo || imageUrls[photo.id]) return
-      
-      fetch(`/api/photos/public-sign-url?path=${encodeURIComponent(photo.file_path)}&slug=${restaurantSlug}`, {
-        cache: 'no-store'
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.url) {
-            setImageUrls(prev => ({ ...prev, [photo.id]: data.url }))
-          }
-        })
-        .catch(err => console.error('Error preloading image:', err))
-    }
-    
-    if (photos[nextIndex]) preloadImage(photos[nextIndex])
-    if (photos[prevIndex]) preloadImage(photos[prevIndex])
-  }, [currentIndex, photos, restaurantSlug, imageUrls])
-
   // Auto-advance slideshow
   useEffect(() => {
     if (photos.length <= 1 || isTransitioning) return
@@ -240,7 +198,21 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
         clearInterval(autoAdvanceTimerRef.current)
       }
     }
-  }, [photos.length, isTransitioning, goToNext])
+  }, [photos.length, isTransitioning, currentIndex])
+
+  const goToNext = useCallback(() => {
+    if (photos.length === 0 || isTransitioning) return
+    setIsTransitioning(true)
+    setCurrentIndex((prev) => (prev + 1) % photos.length)
+    setTimeout(() => setIsTransitioning(false), 300)
+  }, [photos.length, isTransitioning])
+
+  const goToPrevious = useCallback(() => {
+    if (photos.length === 0 || isTransitioning) return
+    setIsTransitioning(true)
+    setCurrentIndex((prev) => (prev - 1 + photos.length) % photos.length)
+    setTimeout(() => setIsTransitioning(false), 300)
+  }, [photos.length, isTransitioning])
 
   // Touch handlers for swipe
   const onTouchStart = (e: React.TouchEvent) => {
@@ -303,10 +275,48 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
     )
   }
 
+  // Preload next and previous images aggressively
+  useEffect(() => {
+    if (photos.length === 0) return
+    
+    const preloadImage = async (photo: Photo) => {
+      if (!photo || imageUrls[photo.id]) return
+      
+      try {
+        const urlResponse = await fetch(
+          `/api/photos/public-sign-url?path=${encodeURIComponent(photo.file_path)}&slug=${restaurantSlug}`,
+          { cache: 'no-store' }
+        )
+        const urlData = await urlResponse.json()
+        if (urlData.url) {
+          // Preload the actual image
+          const img = new window.Image()
+          img.src = urlData.url
+          img.onload = () => {
+            setImageUrls(prev => ({ ...prev, [photo.id]: urlData.url }))
+          }
+        }
+      } catch (error) {
+        console.error('Error preloading image:', error)
+      }
+    }
+    
+    const nextIndex = (currentIndex + 1) % photos.length
+    const prevIndex = (currentIndex - 1 + photos.length) % photos.length
+    
+    // Preload next and previous
+    if (photos[nextIndex]) preloadImage(photos[nextIndex])
+    if (photos[prevIndex]) preloadImage(photos[prevIndex])
+    
+    // Also preload 2 ahead and 2 behind for smoother transitions
+    const nextNextIndex = (currentIndex + 2) % photos.length
+    const prevPrevIndex = (currentIndex - 2 + photos.length) % photos.length
+    if (photos[nextNextIndex]) preloadImage(photos[nextNextIndex])
+    if (photos[prevPrevIndex]) preloadImage(photos[prevPrevIndex])
+  }, [currentIndex, photos, restaurantSlug, imageUrls])
+
   const currentPhoto = photos[currentIndex]
   const currentImageUrl = currentPhoto ? imageUrls[currentPhoto.id] : null
-  
-  // Preload next and previous images
   const nextIndex = (currentIndex + 1) % photos.length
   const prevIndex = (currentIndex - 1 + photos.length) % photos.length
   const nextPhoto = photos[nextIndex]
@@ -318,7 +328,7 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
     <div className="mb-6">
       <div 
         ref={containerRef}
-        className="relative w-full h-[500px] sm:h-[600px] overflow-hidden bg-black rounded-2xl mx-4"
+        className="relative w-full h-[500px] sm:h-[600px] overflow-hidden bg-gray-900 rounded-2xl mx-4"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
@@ -335,28 +345,30 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
           </div>
         )}
 
-        {/* Main image */}
-        {currentImageUrl ? (
-          <div 
-            key={currentPhoto.id}
-            className="absolute inset-0"
-          >
-            <Image
-              src={currentImageUrl}
-              alt={`Photo ${currentIndex + 1}`}
-              fill
-              className={`object-contain transition-opacity duration-500 ease-in-out ${
+        {/* Main image with smooth transition */}
+        <div className="absolute inset-0">
+          {currentImageUrl ? (
+            <div 
+              key={currentPhoto.id}
+              className={`absolute inset-0 transition-opacity duration-300 ${
                 isTransitioning ? 'opacity-0' : 'opacity-100'
               }`}
-              sizes="100vw"
-              priority
-            />
-          </div>
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
-            <div className="text-gray-400">Loading...</div>
-          </div>
-        )}
+            >
+              <Image
+                src={currentImageUrl}
+                alt={`Photo ${currentIndex + 1}`}
+                fill
+                className="object-contain"
+                sizes="100vw"
+                priority
+              />
+            </div>
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
+              <div className="text-gray-400">Loading photo...</div>
+            </div>
+          )}
+        </div>
 
         {/* Instagram handle overlay */}
         {currentPhoto?.instagram_handle && (

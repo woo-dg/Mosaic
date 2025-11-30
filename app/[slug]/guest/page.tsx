@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import RestaurantForm from '@/components/RestaurantForm'
 import LoadingAnimation from '@/components/LoadingAnimation'
@@ -14,7 +14,7 @@ export default function GuestPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [carouselKey, setCarouselKey] = useState(0)
-  const formRef = useRef<HTMLDivElement>(null)
+  const [showModal, setShowModal] = useState(false)
 
   useEffect(() => {
     const loadRestaurant = async () => {
@@ -61,19 +61,15 @@ export default function GuestPage() {
     )
   }
 
-  const [showUploadModal, setShowUploadModal] = useState(false)
-
   const handleUploadClick = () => {
-    setShowUploadModal(true)
+    setShowModal(true)
   }
 
   const handleSubmissionSuccess = () => {
     // Force carousel to refresh by changing key
     setCarouselKey(prev => prev + 1)
-    // Close modal after a brief delay
-    setTimeout(() => {
-      setShowUploadModal(false)
-    }, 500)
+    // Close modal after successful submission
+    setShowModal(false)
   }
 
   return (
@@ -91,27 +87,41 @@ export default function GuestPage() {
         </div>
 
         {/* Photo Carousel */}
-        <div className="bg-white py-4 flex-1">
+        <div className="bg-white py-4">
           <PhotoCarousel key={carouselKey} restaurantSlug={restaurant.slug} onUploadClick={handleUploadClick} />
         </div>
       </div>
 
-      {/* Upload Modal */}
-      {showUploadModal && (
+      {/* Upload Form Modal */}
+      {showModal && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-          onClick={() => setShowUploadModal(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          onClick={() => setShowModal(false)}
         >
           <div 
-            className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <RestaurantForm 
-              restaurantId={restaurant.id} 
-              restaurantSlug={restaurant.slug} 
-              onSubmissionSuccess={handleSubmissionSuccess}
-              onClose={() => setShowUploadModal(false)}
-            />
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">Share Your Experience</h2>
+                <p className="text-sm text-gray-600 mt-1">Upload your photos and feedback</p>
+              </div>
+              <button
+                onClick={() => setShowModal(false)}
+                className="text-gray-400 hover:text-gray-600 text-2xl font-light w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+                aria-label="Close modal"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-6">
+              <RestaurantForm 
+                restaurantId={restaurant.id} 
+                restaurantSlug={restaurant.slug} 
+                onSubmissionSuccess={handleSubmissionSuccess} 
+              />
+            </div>
           </div>
         </div>
       )}

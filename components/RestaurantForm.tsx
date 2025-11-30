@@ -8,10 +8,9 @@ interface RestaurantFormProps {
   restaurantId: string
   restaurantSlug: string
   onSubmissionSuccess?: () => void
-  onClose?: () => void
 }
 
-export default function RestaurantForm({ restaurantId, restaurantSlug, onSubmissionSuccess, onClose }: RestaurantFormProps) {
+export default function RestaurantForm({ restaurantId, restaurantSlug, onSubmissionSuccess }: RestaurantFormProps) {
   const [images, setImages] = useState<File[]>([])
   const [feedback, setFeedback] = useState('')
   const [instagramHandle, setInstagramHandle] = useState('')
@@ -84,13 +83,6 @@ export default function RestaurantForm({ restaurantId, restaurantSlug, onSubmiss
       if (onSubmissionSuccess) {
         onSubmissionSuccess()
       }
-      
-      // Close modal after showing thank you
-      setTimeout(() => {
-        if (onClose) {
-          onClose()
-        }
-      }, 2000)
     } catch (err: any) {
       setError(err.message || 'Something went wrong. Please try again.')
     } finally {
@@ -103,127 +95,110 @@ export default function RestaurantForm({ restaurantId, restaurantSlug, onSubmiss
       {/* Thank You Modal */}
       {showThankYouModal && (
         <div 
-          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in"
           onClick={() => setShowThankYouModal(false)}
         >
           <div 
             className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 text-center animate-zoom-in"
-            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
             <div className="text-6xl mb-4 animate-bounce">🎉</div>
             <h2 className="text-3xl font-bold mb-3 text-gray-900">Thank You!</h2>
             <p className="text-gray-600 mb-6 text-lg">
               Your photos have been uploaded successfully!
             </p>
+            <button
+              onClick={() => setShowThankYouModal(false)}
+              className="w-full bg-gray-900 text-white py-4 px-6 rounded-xl font-semibold text-lg hover:bg-gray-800 active:bg-gray-700 transition-all shadow-lg touch-manipulation"
+            >
+              Continue Browsing
+            </button>
           </div>
         </div>
       )}
 
-      <div className="p-6 sm:p-8">
-        {/* Close button */}
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Share Your Experience</h2>
-          {onClose && (
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors p-2"
-              aria-label="Close"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          )}
-        </div>
+      <form key={formKey} onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
+      <ImageUpload key={formKey} maxImages={3} onImagesChange={setImages} />
 
-        <form key={formKey} onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
-              Upload 1-5 Photos
-            </label>
-            <ImageUpload key={formKey} maxImages={5} onImagesChange={setImages} />
-          </div>
-
-          <div>
-            <label htmlFor="feedback" className="block text-sm font-medium text-gray-700 mb-2">
-              Feedback (Optional)
-            </label>
-            <textarea
-              id="feedback"
-              value={feedback}
-              onChange={(e) => setFeedback(e.target.value)}
-              rows={4}
-              className="w-full px-4 py-3 text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-500 focus:border-transparent resize-none touch-manipulation"
-              placeholder="Tell us about your experience..."
-            />
-          </div>
-
-          <div>
-            <label htmlFor="instagram" className="block text-sm font-medium text-gray-700 mb-2">
-              Instagram Handle (Optional)
-            </label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-base">@</span>
-              <input
-                id="instagram"
-                type="text"
-                value={instagramHandle}
-                onChange={(e) => setInstagramHandle(e.target.value.replace('@', '').replace(/\s/g, ''))}
-                className="w-full pl-8 pr-4 py-3 text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-500 focus:border-transparent touch-manipulation"
-                placeholder="yourusername"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <label className="flex items-start space-x-3 cursor-pointer touch-manipulation">
-              <input
-                type="checkbox"
-                checked={agreedToTerms}
-                onChange={(e) => setAgreedToTerms(e.target.checked)}
-                className="mt-1 w-5 h-5 text-gray-900 border-gray-300 rounded focus:ring-gray-500 flex-shrink-0"
-                required
-              />
-              <span className="text-sm text-gray-700 leading-relaxed">
-                I agree to share my submission with the restaurant{' '}
-                {allowMarketing && <span className="font-semibold">and allow it to be used for marketing</span>}
-                {' '}
-                <Link href="/privacy" className="text-gray-600 hover:underline inline">
-                  Learn more
-                </Link>
-              </span>
-            </label>
-            
-            {agreedToTerms && (
-              <label className="flex items-center space-x-3 cursor-pointer touch-manipulation">
-                <input
-                  type="checkbox"
-                  checked={allowMarketing}
-                  onChange={(e) => setAllowMarketing(e.target.checked)}
-                  className="w-5 h-5 text-gray-900 border-gray-300 rounded focus:ring-gray-500 flex-shrink-0"
-                />
-                <span className="text-sm text-gray-600">
-                  Also allow for marketing use (optional)
-                </span>
-              </label>
-            )}
-          </div>
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
-              {error}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading || !agreedToTerms || images.length === 0}
-            className="w-full bg-gray-900 text-white py-4 px-6 rounded-xl font-semibold text-base hover:bg-gray-800 active:bg-gray-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all touch-manipulation shadow-lg disabled:shadow-none"
-          >
-            {loading ? 'Submitting...' : 'Submit'}
-          </button>
-        </form>
+      <div>
+        <label htmlFor="feedback" className="block text-sm font-medium text-gray-700 mb-2">
+          Feedback (Optional)
+        </label>
+        <textarea
+          id="feedback"
+          value={feedback}
+          onChange={(e) => setFeedback(e.target.value)}
+          rows={4}
+          className="w-full px-4 py-3 text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-500 focus:border-gray-400 resize-none touch-manipulation bg-white"
+          placeholder="Tell us about your experience..."
+        />
       </div>
+
+      <div>
+        <label htmlFor="instagram" className="block text-sm font-medium text-gray-700 mb-2">
+          Instagram Handle (Optional)
+        </label>
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-base">@</span>
+          <input
+            id="instagram"
+            type="text"
+            value={instagramHandle}
+            onChange={(e) => setInstagramHandle(e.target.value.replace('@', '').replace(/\s/g, ''))}
+            className="w-full pl-8 pr-4 py-3 text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-500 focus:border-gray-400 touch-manipulation bg-white"
+            placeholder="yourusername"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <label className="flex items-start space-x-3 cursor-pointer touch-manipulation p-4 bg-gray-50 rounded-xl border border-gray-200">
+          <input
+            type="checkbox"
+            checked={agreedToTerms}
+            onChange={(e) => setAgreedToTerms(e.target.checked)}
+            className="mt-1 w-5 h-5 sm:w-6 sm:h-6 text-gray-900 border-gray-300 rounded focus:ring-gray-500 flex-shrink-0"
+            required
+          />
+          <span className="text-sm sm:text-base text-gray-800 leading-relaxed">
+            I agree to share my submission with the restaurant{' '}
+            {allowMarketing && <span className="font-semibold">and allow it to be used for marketing (social media, etc.)</span>}
+            {' '}
+            <Link href="/privacy" className="text-gray-600 hover:underline font-medium inline">
+              Learn more
+            </Link>
+          </span>
+        </label>
+        
+        {agreedToTerms && (
+          <label className="flex items-center space-x-3 cursor-pointer touch-manipulation pl-4">
+            <input
+              type="checkbox"
+              checked={allowMarketing}
+              onChange={(e) => setAllowMarketing(e.target.checked)}
+              className="w-5 h-5 sm:w-6 sm:h-6 text-gray-900 border-gray-300 rounded focus:ring-gray-500 flex-shrink-0"
+            />
+            <span className="text-sm sm:text-base text-gray-600">
+              Also allow for marketing use (optional)
+            </span>
+          </label>
+        )}
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm sm:text-base">
+          {error}
+        </div>
+      )}
+
+      <button
+        type="submit"
+        disabled={loading || !agreedToTerms || images.length === 0}
+        className="w-full bg-gray-900 text-white py-4 sm:py-5 px-6 rounded-xl font-semibold text-base sm:text-lg hover:bg-gray-800 active:bg-gray-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all touch-manipulation shadow-lg disabled:shadow-none"
+      >
+        {loading ? 'Submitting...' : 'Submit'}
+      </button>
+    </form>
     </>
   )
 }
