@@ -177,6 +177,21 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
     }
   }, [restaurantSlug, loadPhotos])
 
+  // Define navigation functions before they're used
+  const goToNext = useCallback(() => {
+    if (photos.length === 0 || isTransitioning) return
+    setIsTransitioning(true)
+    setCurrentIndex((prev) => (prev + 1) % photos.length)
+    setTimeout(() => setIsTransitioning(false), 300)
+  }, [photos.length, isTransitioning])
+
+  const goToPrevious = useCallback(() => {
+    if (photos.length === 0 || isTransitioning) return
+    setIsTransitioning(true)
+    setCurrentIndex((prev) => (prev - 1 + photos.length) % photos.length)
+    setTimeout(() => setIsTransitioning(false), 300)
+  }, [photos.length, isTransitioning])
+
   // Preload images for smoother transitions
   useEffect(() => {
     if (photos.length === 0) return
@@ -226,20 +241,6 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
       }
     }
   }, [photos.length, isTransitioning, goToNext])
-
-  const goToNext = useCallback(() => {
-    if (photos.length === 0 || isTransitioning) return
-    setIsTransitioning(true)
-    setCurrentIndex((prev) => (prev + 1) % photos.length)
-    setTimeout(() => setIsTransitioning(false), 300)
-  }, [photos.length, isTransitioning])
-
-  const goToPrevious = useCallback(() => {
-    if (photos.length === 0 || isTransitioning) return
-    setIsTransitioning(true)
-    setCurrentIndex((prev) => (prev - 1 + photos.length) % photos.length)
-    setTimeout(() => setIsTransitioning(false), 300)
-  }, [photos.length, isTransitioning])
 
   // Touch handlers for swipe
   const onTouchStart = (e: React.TouchEvent) => {
