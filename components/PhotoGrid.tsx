@@ -112,13 +112,13 @@ export default function PhotoGrid({ restaurantSlug, onUploadClick }: PhotoGridPr
         setPhotos([])
       }
     } finally {
-      if (photos.length === 0) {
-        setLoading(false)
-      }
+      setLoading(false)
     }
   }
 
   useEffect(() => {
+    if (!mounted) return
+    
     loadPhotos()
 
     const supabase = createBrowserClient()
@@ -173,7 +173,8 @@ export default function PhotoGrid({ restaurantSlug, onUploadClick }: PhotoGridPr
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('focus', handleFocus)
     }
-  }, [restaurantSlug])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restaurantSlug, mounted])
 
   // Create masonry grid layout with varying sizes (Instagram For You style)
   const getGridClass = (index: number) => {
@@ -199,26 +200,62 @@ export default function PhotoGrid({ restaurantSlug, onUploadClick }: PhotoGridPr
 
   if (!mounted || (loading && photos.length === 0)) {
     return (
-      <div className="mb-6">
-        <div className="flex items-center justify-center h-[400px] bg-gray-50 rounded-2xl">
+      <div className="mb-6 min-h-[400px]">
+        <div className="flex items-center justify-center h-[400px] bg-white">
           <div className="text-gray-400">Loading photos...</div>
         </div>
+        {/* Floating button still visible during loading */}
+        <button
+          onClick={onUploadClick}
+          className="fixed bottom-6 left-6 z-40 w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-gray-900 to-gray-800 hover:from-gray-800 hover:to-gray-700 active:scale-95 rounded-full flex items-center justify-center shadow-2xl transition-all touch-manipulation border-2 border-white/10"
+          aria-label="Share your experience"
+        >
+          <svg
+            className="w-7 h-7 sm:w-8 sm:h-8 text-white"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={3}
+              d="M12 4v16m8-8H4"
+            />
+          </svg>
+        </button>
       </div>
     )
   }
 
   if (photos.length === 0) {
     return (
-      <div className="mb-6 px-4">
-        <div className="bg-gray-50 rounded-2xl p-8 text-center border-2 border-dashed border-gray-300">
-          <p className="text-gray-700 mb-4 font-medium">No photos yet. Be the first to share!</p>
-          <button
-            onClick={onUploadClick}
-            className="bg-gray-900 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gray-800 active:bg-gray-700 transition-all shadow-lg touch-manipulation"
-          >
-            Upload Your Photo +
-          </button>
+      <div className="mb-6 min-h-[400px] relative">
+        <div className="flex items-center justify-center h-[400px] bg-white">
+          <div className="text-center">
+            <p className="text-gray-700 mb-4 font-medium">No photos yet. Be the first to share!</p>
+          </div>
         </div>
+        {/* Floating button still visible when empty */}
+        <button
+          onClick={onUploadClick}
+          className="fixed bottom-6 left-6 z-40 w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-gray-900 to-gray-800 hover:from-gray-800 hover:to-gray-700 active:scale-95 rounded-full flex items-center justify-center shadow-2xl transition-all touch-manipulation border-2 border-white/10"
+          aria-label="Share your experience"
+        >
+          <svg
+            className="w-7 h-7 sm:w-8 sm:h-8 text-white"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={3}
+              d="M12 4v16m8-8H4"
+            />
+          </svg>
+        </button>
       </div>
     )
   }
@@ -226,17 +263,16 @@ export default function PhotoGrid({ restaurantSlug, onUploadClick }: PhotoGridPr
   return (
     <div className="relative mb-6">
       {/* Instagram-style grid - masonry layout */}
-      <div className="grid grid-cols-3 gap-1 sm:gap-1.5">
+      <div className="grid grid-cols-3 gap-1 sm:gap-1.5" style={{ gridAutoRows: 'minmax(100px, auto)' }}>
         {photos.map((photo, index) => {
           const imageUrl = imageUrls[photo.id]
           const gridClass = getGridClass(index)
-          // Determine if this is a large item (2x2 or larger)
-          const isLarge = gridClass.includes('col-span-2') || gridClass.includes('row-span-2')
 
           return (
             <div
               key={photo.id}
               className={`${gridClass} relative overflow-hidden bg-gray-100 rounded-sm sm:rounded-md group`}
+              style={{ aspectRatio: gridClass.includes('row-span-2') ? '1/2' : gridClass.includes('col-span-2') && !gridClass.includes('row-span-2') ? '2/1' : '1/1' }}
             >
               {imageUrl ? (
                 <>
@@ -246,8 +282,8 @@ export default function PhotoGrid({ restaurantSlug, onUploadClick }: PhotoGridPr
                     fill
                     className="object-cover hover:scale-105 transition-transform duration-300 cursor-pointer"
                     sizes="(max-width: 640px) 33vw, 33vw"
+                    unoptimized
                   />
-                  {/* Video play icon overlay (if needed in future) */}
                   {/* Instagram handle overlay - show on hover */}
                   {photo.instagram_handle && (
                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent p-2 sm:p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
@@ -256,7 +292,7 @@ export default function PhotoGrid({ restaurantSlug, onUploadClick }: PhotoGridPr
                   )}
                 </>
               ) : (
-                <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-200 animate-pulse">
                   <div className="text-gray-400 text-xs">Loading...</div>
                 </div>
               )}
