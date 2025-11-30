@@ -20,7 +20,9 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
   const [photos, setPhotos] = useState<Photo[]>([])
   const [imageUrls, setImageUrls] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
-  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [isTransitioning, setIsTransitioning] = useState(false)
+  const autoAdvanceTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     // Initial load
@@ -53,9 +55,37 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
       clearInterval(pollInterval)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('focus', handleFocus)
+      if (autoAdvanceTimerRef.current) {
+        clearInterval(autoAdvanceTimerRef.current)
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restaurantSlug])
+
+  // Auto-advance carousel
+  useEffect(() => {
+    if (photos.length <= 1) return // Don't auto-advance if 1 or fewer items
+    
+    // Clear existing timer
+    if (autoAdvanceTimerRef.current) {
+      clearInterval(autoAdvanceTimerRef.current)
+    }
+    
+    // Set up auto-advance (4 seconds)
+    autoAdvanceTimerRef.current = setInterval(() => {
+      if (!isTransitioning) {
+        setIsTransitioning(true)
+        setCurrentIndex((prev) => (prev + 1) % photos.length)
+        setTimeout(() => setIsTransitioning(false), 500) // Transition duration
+      }
+    }, 4000)
+    
+    return () => {
+      if (autoAdvanceTimerRef.current) {
+        clearInterval(autoAdvanceTimerRef.current)
+      }
+    }
+  }, [photos.length, isTransitioning])
 
   const loadPhotos = async () => {
     try {
@@ -181,17 +211,44 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
     }
   }
 
+  // Get items for carousel display (current, left, right)
+  const getCarouselItems = () => {
+    if (photos.length === 0) return []
+    
+    const items = [...photos]
+    const current = items[currentIndex]
+    const left = items[(currentIndex - 1 + items.length) % items.length]
+    const right = items[(currentIndex + 1) % items.length]
+    
+    return [left, current, right]
+  }
+
+  const carouselItems = getCarouselItems()
+
   // Show loading only on initial load when we have no photos
   const isInitialLoad = loading && photos.length === 0
 
   if (isInitialLoad) {
     return (
       <div className="mb-6">
-        <div className="flex items-center justify-between mb-4 px-4">
-          <h2 className="text-lg font-semibold text-gray-900">Community Photos</h2>
-        </div>
-        <div className="flex items-center justify-center h-48 bg-gray-50 rounded-2xl mx-4">
+        <div className="flex items-center justify-center h-64 bg-gray-50 rounded-2xl mx-4">
           <div className="text-gray-400">Loading photos...</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (photos.length === 0) {
+    return (
+      <div className="mb-6 px-4">
+        <div className="bg-gray-50 rounded-2xl p-8 text-center border-2 border-dashed border-gray-300">
+          <p className="text-gray-700 mb-4 font-medium">No photos yet. Be the first to share!</p>
+          <button
+            onClick={onUploadClick}
+            className="bg-gray-900 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gray-800 active:bg-gray-700 transition-all shadow-lg touch-manipulation"
+          >
+            Upload Your Photo +
+          </button>
         </div>
       </div>
     )
@@ -199,57 +256,119 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
 
   return (
     <div className="mb-6">
-      {photos.length === 0 ? (
-        <div className="px-4">
-          <div className="bg-gray-50 rounded-2xl p-8 text-center border-2 border-dashed border-gray-300">
-            <p className="text-gray-700 mb-4 font-medium">No photos yet. Be the first to share!</p>
-            <button
-              onClick={onUploadClick}
-              className="bg-gray-900 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gray-800 active:bg-gray-700 transition-all shadow-lg touch-manipulation"
-            >
-              Upload Your Photo +
-            </button>
+      <div className="relative w-full h-[500px] sm:h-[600px] overflow-hidden">
+        {/* Carousel container */}
+        <div className="flex items-center justify-center h-full relative">
+          {/* Left item (small) */}
+          <div 
+            key={`left-${currentIndex}`}
+            className={`absolute left-4 sm:left-8 w-[120px] sm:w-[150px] h-[160px] sm:h-[200px] z-10 opacity-60 transition-all duration-500 ease-in-out ${
+              isTransitioning ? 'opacity-0 scale-90' : 'opacity-60 scale-100'
+            }`}
+          >
+            {carouselItems[0] && imageUrls[carouselItems[0].id] ? (
+              <div className="relative w-full h-full rounded-lg overflow-hidden shadow-lg">
+                <Image
+                  src={imageUrls[carouselItems[0].id]}
+                  alt="Previous photo"
+                  fill
+                  className="object-cover"
+                  sizes="150px"
+                />
+              </div>
+            ) : (
+              <div className="w-full h-full bg-gray-200 rounded-lg flex items-center justify-center">
+                <div className="text-gray-400 text-xs">Loading...</div>
+              </div>
+            )}
           </div>
-        </div>
-      ) : (
-        <div>
-          {/* Instagram For You style - seamless grid, no gaps, no padding */}
-          <div className="grid grid-cols-3">
-            {photos.map((photo, index) => (
-              <div
-                key={photo.id}
-                className="relative aspect-square bg-black overflow-hidden cursor-pointer"
-              >
-                {imageUrls[photo.id] ? (
-                  <Image
-                    src={imageUrls[photo.id]}
-                    alt={`Photo ${index + 1}`}
-                    fill
-                    className="object-cover"
-                    sizes="33vw"
-                    priority={index < 6}
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gray-900">
-                    <div className="text-gray-500 text-xs">Loading...</div>
+
+          {/* Center item (large) */}
+          <div 
+            key={`center-${currentIndex}`}
+            className={`relative w-[280px] sm:w-[350px] h-[400px] sm:h-[500px] z-20 mx-4 transition-all duration-500 ease-in-out ${
+              isTransitioning ? 'scale-95 opacity-90' : 'scale-100 opacity-100'
+            }`}
+          >
+            {carouselItems[1] && imageUrls[carouselItems[1].id] ? (
+              <div className="relative w-full h-full rounded-xl overflow-hidden shadow-2xl">
+                <Image
+                  src={imageUrls[carouselItems[1].id]}
+                  alt="Current photo"
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 640px) 280px, 350px"
+                  priority
+                />
+                {/* Optional: Instagram handle overlay */}
+                {carouselItems[1].instagram_handle && (
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
+                    <p className="text-white text-sm font-semibold">
+                      @{carouselItems[1].instagram_handle}
+                    </p>
                   </div>
                 )}
               </div>
-            ))}
-
-            {/* Upload prompt - integrated seamlessly */}
-            <div
-              className="relative aspect-square bg-gray-900 flex flex-col items-center justify-center cursor-pointer active:bg-gray-800 transition-colors"
-              onClick={onUploadClick}
-            >
-              <div className="text-center">
-                <div className="text-white text-5xl font-light mb-1">+</div>
-                <p className="text-white text-xs font-normal">Share</p>
+            ) : (
+              <div className="w-full h-full bg-gray-200 rounded-xl flex items-center justify-center">
+                <div className="text-gray-400">Loading...</div>
               </div>
-            </div>
+            )}
+          </div>
+
+          {/* Right item (small) */}
+          <div 
+            key={`right-${currentIndex}`}
+            className={`absolute right-4 sm:right-8 w-[120px] sm:w-[150px] h-[160px] sm:h-[200px] z-10 opacity-60 transition-all duration-500 ease-in-out ${
+              isTransitioning ? 'opacity-0 scale-90' : 'opacity-60 scale-100'
+            }`}
+          >
+            {carouselItems[2] && imageUrls[carouselItems[2].id] ? (
+              <div className="relative w-full h-full rounded-lg overflow-hidden shadow-lg">
+                <Image
+                  src={imageUrls[carouselItems[2].id]}
+                  alt="Next photo"
+                  fill
+                  className="object-cover"
+                  sizes="150px"
+                />
+              </div>
+            ) : (
+              <div className="w-full h-full bg-gray-200 rounded-lg flex items-center justify-center">
+                <div className="text-gray-400 text-xs">Loading...</div>
+              </div>
+            )}
           </div>
         </div>
-      )}
+
+        {/* Upload prompt button - floating */}
+        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-30">
+          <button
+            onClick={onUploadClick}
+            className="bg-gray-900 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gray-800 active:bg-gray-700 transition-all shadow-lg touch-manipulation text-sm"
+          >
+            Share Your Experience +
+          </button>
+        </div>
+
+        {/* Dots indicator */}
+        <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-30 flex gap-2">
+          {photos.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => {
+                setIsTransitioning(true)
+                setCurrentIndex(index)
+                setTimeout(() => setIsTransitioning(false), 500)
+              }}
+              className={`w-2 h-2 rounded-full transition-all ${
+                index === currentIndex ? 'bg-white w-6' : 'bg-white/50'
+              }`}
+              aria-label={`Go to photo ${index + 1}`}
+            />
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
