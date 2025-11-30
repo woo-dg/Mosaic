@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import RestaurantForm from '@/components/RestaurantForm'
 import PhotoGrid from '@/components/PhotoGrid'
 import LandingPage from '@/components/LandingPage'
+import LoadingAnimation from '@/components/LoadingAnimation'
 import { createBrowserClient } from '@/lib/supabase/client'
 
 export default function GuestPage() {
