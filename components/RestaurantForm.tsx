@@ -31,6 +31,11 @@ export default function RestaurantForm({ restaurantId, restaurantSlug, onSubmiss
       return
     }
 
+    if (rating === 0) {
+      setError('Please provide a rating')
+      return
+    }
+
     if (!agreedToTerms) {
       setError('You must agree to the terms to submit')
       return
@@ -128,14 +133,14 @@ export default function RestaurantForm({ restaurantId, restaurantSlug, onSubmiss
         {/* Image Upload */}
         <ImageUpload key={formKey} maxImages={3} onImagesChange={setImages} />
 
-        {/* 5 Star Rating */}
-        <div className="flex justify-center gap-3 py-2">
+        {/* 5 Star Rating - Mandatory */}
+        <div className="flex justify-center gap-4 py-3">
           {[1, 2, 3, 4, 5].map((star) => (
             <button
               key={star}
               type="button"
               onClick={() => setRating(star)}
-              className={`text-4xl sm:text-5xl transition-all duration-200 ${
+              className={`text-5xl sm:text-6xl transition-all duration-200 ${
                 star <= rating ? 'text-yellow-400 scale-110' : 'text-gray-300'
               } hover:text-yellow-400 hover:scale-110`}
               aria-label={`${star} star`}
@@ -224,7 +229,7 @@ export default function RestaurantForm({ restaurantId, restaurantSlug, onSubmiss
 
       <button
         type="submit"
-        disabled={loading || !agreedToTerms || images.length === 0}
+        disabled={loading || !agreedToTerms || images.length === 0 || rating === 0}
         className="w-full bg-gray-900 text-white py-4 sm:py-5 px-6 rounded-xl font-semibold text-base sm:text-lg hover:bg-gray-800 active:bg-gray-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all touch-manipulation shadow-lg disabled:shadow-none"
       >
         {loading ? 'Submitting...' : 'Submit'}

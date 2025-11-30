@@ -3,9 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import RestaurantForm from '@/components/RestaurantForm'
-import PhotoGrid from '@/components/PhotoGrid'
-import LandingPage from '@/components/LandingPage'
 import LoadingAnimation from '@/components/LoadingAnimation'
+import PhotoCarousel from '@/components/PhotoCarousel'
 import { createBrowserClient } from '@/lib/supabase/client'
 
 export default function GuestPage() {
@@ -13,7 +12,6 @@ export default function GuestPage() {
   const slug = params.slug as string
   const [restaurant, setRestaurant] = useState<{ id: string; name: string; slug: string } | null>(null)
   const [loading, setLoading] = useState(true)
-  const [showLanding, setShowLanding] = useState(true)
   const [error, setError] = useState(false)
   const [carouselKey, setCarouselKey] = useState(0)
   const [showModal, setShowModal] = useState(false)
@@ -33,13 +31,11 @@ export default function GuestPage() {
           setError(true)
           return
         }
+
+        // Small delay to show the animation (reduced for faster loading)
+        await new Promise(resolve => setTimeout(resolve, 400))
         
         setRestaurant(data as { id: string; name: string; slug: string })
-        
-        // Show landing page for 2 seconds, then transition to FYP
-        setTimeout(() => {
-          setShowLanding(false)
-        }, 2000)
       } catch (err) {
         setError(true)
       } finally {
@@ -50,16 +46,8 @@ export default function GuestPage() {
     loadRestaurant()
   }, [slug])
 
-  const handleViewPhotos = () => {
-    setShowLanding(false)
-  }
-
   if (loading) {
     return <LoadingAnimation />
-  }
-
-  if (showLanding && restaurant) {
-    return <LandingPage restaurantName={restaurant.name} restaurantSlug={restaurant.slug} onViewPhotos={handleViewPhotos} />
   }
 
   if (error || !restaurant) {
@@ -129,10 +117,27 @@ export default function GuestPage() {
           </div>
         </div>
 
-        {/* Photo Grid - Instagram For You Page Style */}
-        <div className="bg-white py-0 sm:py-0 px-0 sm:px-0 pb-20">
-          <div className="w-full">
-            <PhotoGrid key={carouselKey} restaurantSlug={restaurant.slug} onUploadClick={handleUploadClick} />
+        {/* Photo Carousel - Centered with padding */}
+        <div className="bg-white py-4 px-4">
+          <div className="max-w-4xl mx-auto">
+            <PhotoCarousel key={carouselKey} restaurantSlug={restaurant.slug} onUploadClick={handleUploadClick} />
+          </div>
+        </div>
+
+        {/* Stacked text section */}
+        <div className="bg-white px-4 pb-8">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center space-y-1">
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
+                Share Photos
+              </h2>
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
+                Get Featured
+              </h2>
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
+                Help Restaurants
+              </h2>
+            </div>
           </div>
         </div>
       </div>
