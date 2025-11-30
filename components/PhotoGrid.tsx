@@ -263,7 +263,7 @@ export default function PhotoGrid({ restaurantSlug, onUploadClick }: PhotoGridPr
   return (
     <div className="relative mb-6">
       {/* Instagram-style grid - masonry layout */}
-      <div className="grid grid-cols-3 gap-1 sm:gap-1.5" style={{ gridAutoRows: 'minmax(100px, auto)' }}>
+      <div className="grid grid-cols-3 gap-0" style={{ gridAutoRows: 'minmax(100px, auto)' }}>
         {photos.map((photo, index) => {
           const imageUrl = imageUrls[photo.id]
           const gridClass = getGridClass(index)
@@ -271,29 +271,36 @@ export default function PhotoGrid({ restaurantSlug, onUploadClick }: PhotoGridPr
           return (
             <div
               key={photo.id}
-              className={`${gridClass} relative overflow-hidden bg-gray-100 rounded-sm sm:rounded-md group`}
-              style={{ aspectRatio: gridClass.includes('row-span-2') ? '1/2' : gridClass.includes('col-span-2') && !gridClass.includes('row-span-2') ? '2/1' : '1/1' }}
+              className={`${gridClass} relative overflow-hidden bg-gray-900 group`}
+              style={{ 
+                aspectRatio: gridClass.includes('row-span-2') ? '1/2' : gridClass.includes('col-span-2') && !gridClass.includes('row-span-2') ? '2/1' : '1/1',
+                borderRadius: '1px',
+                margin: '0.5px'
+              }}
             >
               {imageUrl ? (
                 <>
-                  <Image
-                    src={imageUrl}
-                    alt={`Photo ${index + 1}`}
-                    fill
-                    className="object-cover hover:scale-105 transition-transform duration-300 cursor-pointer"
-                    sizes="(max-width: 640px) 33vw, 33vw"
-                    unoptimized
-                  />
+                  <div className="absolute inset-0 bg-gray-900">
+                    <Image
+                      src={imageUrl}
+                      alt={`Photo ${index + 1}`}
+                      fill
+                      className="object-cover hover:scale-105 transition-transform duration-300 cursor-pointer"
+                      sizes="(max-width: 640px) 33vw, 33vw"
+                      unoptimized
+                      priority={index < 6}
+                    />
+                  </div>
                   {/* Instagram handle overlay - show on hover */}
                   {photo.instagram_handle && (
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent p-2 sm:p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent p-2 sm:p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
                       <p className="text-white text-xs sm:text-sm font-semibold">@{photo.instagram_handle}</p>
                     </div>
                   )}
                 </>
               ) : (
-                <div className="absolute inset-0 flex items-center justify-center bg-gray-200 animate-pulse">
-                  <div className="text-gray-400 text-xs">Loading...</div>
+                <div className="absolute inset-0 bg-gray-900">
+                  <div className="w-full h-full bg-gray-800 animate-pulse"></div>
                 </div>
               )}
             </div>
