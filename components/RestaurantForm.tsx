@@ -126,7 +126,7 @@ export default function RestaurantForm({ restaurantId, restaurantSlug, onSubmiss
 
       <form key={formKey} onSubmit={handleSubmit} className="space-y-6">
         {/* Title */}
-        <div className="text-center -mt-2">
+        <div className="text-center -mt-4">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Upload your favorite photos</h2>
         </div>
 
@@ -134,23 +134,23 @@ export default function RestaurantForm({ restaurantId, restaurantSlug, onSubmiss
         <ImageUpload key={formKey} maxImages={3} onImagesChange={setImages} />
 
         {/* 5 Star Rating - Mandatory */}
-        <div className="flex flex-col items-center gap-2 py-2">
-          <div className="flex justify-center gap-4">
-            {[1, 2, 3, 4, 5].map((star) => (
-              <button
-                key={star}
-                type="button"
-                onClick={() => setRating(star)}
-                className={`text-6xl sm:text-7xl transition-all duration-200 ${
-                  star <= rating ? 'text-yellow-400 scale-110' : 'text-gray-300'
-                } hover:text-yellow-400 hover:scale-110`}
-                aria-label={`${star} star`}
-              >
-                ★
-              </button>
-            ))}
-          </div>
-          <span className="text-sm text-red-500 font-medium">* Required</span>
+        <div className="flex justify-center gap-4 py-2 relative">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <button
+              key={star}
+              type="button"
+              onClick={() => setRating(star)}
+              className={`text-7xl sm:text-8xl transition-all duration-200 relative ${
+                star <= rating ? 'text-yellow-400 scale-110' : 'text-gray-300'
+              } hover:text-yellow-400 hover:scale-110`}
+              aria-label={`${star} star`}
+            >
+              ★
+              {star === 5 && (
+                <span className="absolute -top-2 -right-2 text-2xl text-red-500 font-bold">*</span>
+              )}
+            </button>
+          ))}
         </div>
 
         {/* Instagram Handle */}
