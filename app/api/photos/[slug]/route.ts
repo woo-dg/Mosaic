@@ -47,6 +47,7 @@ export async function GET(
         id,
         created_at,
         instagram_handle,
+        allow_marketing,
         photos(id, file_path)
       `)
       .eq('restaurant_id', restaurantData.id)
@@ -62,14 +63,17 @@ export async function GET(
     }
 
     // Flatten photos with submission info
-    const photos = (submissions || []).flatMap((submission: any) =>
-      (submission.photos || []).map((photo: any) => ({
-        id: photo.id,
-        file_path: photo.file_path,
-        created_at: submission.created_at,
-        instagram_handle: submission.instagram_handle,
-      }))
-    )
+    // Filter to only include photos from submissions with allow_marketing = true
+    const photos = (submissions || [])
+      .filter((submission: any) => submission.allow_marketing === true)
+      .flatMap((submission: any) =>
+        (submission.photos || []).map((photo: any) => ({
+          id: photo.id,
+          file_path: photo.file_path,
+          created_at: submission.created_at,
+          instagram_handle: submission.instagram_handle,
+        }))
+      )
 
     return NextResponse.json({ photos: photos || [] }, {
       headers: { 'Content-Type': 'application/json' }

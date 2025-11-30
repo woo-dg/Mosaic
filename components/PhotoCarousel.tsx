@@ -83,9 +83,18 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
           setPhotos(newPhotos)
           
           // If a new photo was added (count increased), set it as the current index
-          if (newPhotos.length > previousCount && previousCount > 0) {
+          if (newPhotos.length > previousCount) {
             // Find the newest photo (should be first in the array since we order by created_at DESC)
             setCurrentIndex(0)
+            // Force a refresh by clearing image URLs for the new photo
+            if (newPhotos[0]) {
+              // Remove the URL for the new photo so it gets reloaded
+              setImageUrls(prev => {
+                const updated = { ...prev }
+                delete updated[newPhotos[0].id]
+                return updated
+              })
+            }
           }
           
           // Load signed URLs for new photos only (preserve existing URLs)
@@ -161,10 +170,22 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
       )
       .subscribe()
     
-    // More aggressive polling for faster updates (every 1.5 seconds)
+    // More aggressive polling for faster updates (every 1 second for first 30 seconds, then every 2 seconds)
+    let pollCount = 0
     const pollInterval = setInterval(() => {
       loadPhotos()
-    }, 1500)
+      pollCount++
+    }, 1000)
+    
+    // After 30 seconds, switch to slower polling
+    const slowPollTimeout = setTimeout(() => {
+      clearInterval(pollInterval)
+      const slowPollInterval = setInterval(() => {
+        loadPhotos()
+      }, 2000)
+      // Store for cleanup
+      return () => clearInterval(slowPollInterval)
+    }, 30000)
     
     // Refresh when page becomes visible
     const handleVisibilityChange = () => {
@@ -183,6 +204,7 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
     return () => {
       supabase.removeChannel(channel)
       clearInterval(pollInterval)
+      clearTimeout(slowPollTimeout)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('focus', handleFocus)
       if (autoAdvanceTimerRef.current) {

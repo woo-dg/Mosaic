@@ -16,7 +16,7 @@ export default function RestaurantForm({ restaurantId, restaurantSlug, onSubmiss
   const [instagramHandle, setInstagramHandle] = useState('')
   const [rating, setRating] = useState(0)
   const [agreedToTerms, setAgreedToTerms] = useState(false)
-  const [allowMarketing, setAllowMarketing] = useState(false)
+  const [allowMarketing, setAllowMarketing] = useState(true) // Default to true so photos show in carousel
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [showThankYouModal, setShowThankYouModal] = useState(false)

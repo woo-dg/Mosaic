@@ -6,7 +6,7 @@ export default function LoadingAnimation() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-white overflow-hidden">
       <motion.div
-        initial={{ x: -400, opacity: 0, rotate: -15 }}
+        initial={{ x: -300, opacity: 0, rotate: -10 }}
         animate={{ 
           x: 0, 
           opacity: 1, 
@@ -14,22 +14,22 @@ export default function LoadingAnimation() {
         }}
         transition={{
           type: 'spring',
-          damping: 12,
-          stiffness: 120,
-          duration: 0.8,
+          damping: 15,
+          stiffness: 200,
+          duration: 0.5,
         }}
         className="text-center relative"
       >
         <motion.div
           animate={{
-            y: [0, -15, 0],
-            rotate: [0, -2, 0],
+            y: [0, -12, 0],
+            rotate: [0, -1, 0],
           }}
           transition={{
-            duration: 1.2,
+            duration: 1,
             repeat: Infinity,
             ease: 'easeInOut',
-            delay: 0.8,
+            delay: 0.5,
           }}
           className="text-8xl font-bold text-gray-900 relative"
         >
@@ -38,7 +38,7 @@ export default function LoadingAnimation() {
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.6, duration: 0.4 }}
+          transition={{ delay: 0.3, duration: 0.3 }}
           className="mt-4 text-lg text-gray-600"
         >
           Loading your experience...

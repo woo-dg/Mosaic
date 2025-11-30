@@ -32,8 +32,8 @@ export default function GuestPage() {
           return
         }
 
-        // Small delay to show the animation
-        await new Promise(resolve => setTimeout(resolve, 800))
+        // Small delay to show the animation (reduced for faster loading)
+        await new Promise(resolve => setTimeout(resolve, 400))
         
         setRestaurant(data as { id: string; name: string; slug: string })
       } catch (err) {
@@ -66,12 +66,18 @@ export default function GuestPage() {
   }
 
   const handleSubmissionSuccess = async () => {
-    // Close modal first
+    // Close modal immediately
     setShowModal(false)
-    // Force carousel to refresh by changing key and wait a bit for the photo to be processed
+    // Force carousel to refresh multiple times to catch the new photo
     setTimeout(() => {
       setCarouselKey(prev => prev + 1)
-    }, 500)
+    }, 200)
+    setTimeout(() => {
+      setCarouselKey(prev => prev + 1)
+    }, 800)
+    setTimeout(() => {
+      setCarouselKey(prev => prev + 1)
+    }, 1500)
   }
 
   return (
