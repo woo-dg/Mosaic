@@ -210,14 +210,14 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
     if (photos.length === 0 || isTransitioning) return
     setIsTransitioning(true)
     setCurrentIndex((prev) => (prev + 1) % photos.length)
-    setTimeout(() => setIsTransitioning(false), 300)
+    setTimeout(() => setIsTransitioning(false), 500)
   }, [photos.length, isTransitioning])
 
   const goToPrevious = useCallback(() => {
     if (photos.length === 0 || isTransitioning) return
     setIsTransitioning(true)
     setCurrentIndex((prev) => (prev - 1 + photos.length) % photos.length)
-    setTimeout(() => setIsTransitioning(false), 300)
+    setTimeout(() => setIsTransitioning(false), 500)
   }, [photos.length, isTransitioning])
 
   // Touch handlers for swipe
@@ -296,7 +296,7 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
   if (!mounted || (loading && photos.length === 0)) {
     return (
       <div className="mb-6">
-        <div className="flex items-center justify-center h-[400px] sm:h-[450px] bg-gray-50 rounded-2xl mx-4">
+        <div className="flex items-center justify-center h-[500px] sm:h-[600px] bg-gray-50 rounded-2xl mx-4">
           <div className="text-gray-400">Loading photos...</div>
         </div>
       </div>
@@ -340,66 +340,117 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
   const currentPhoto = photos[currentIndex]
   const currentImageUrl = currentPhoto ? imageUrls[currentPhoto.id] : null
 
+  // Get previous and next photos for side display
+  const prevIndex = (currentIndex - 1 + photos.length) % photos.length
+  const nextIndex = (currentIndex + 1) % photos.length
+  const prevPhoto = photos[prevIndex]
+  const nextPhoto = photos[nextIndex]
+  const prevImageUrl = prevPhoto ? imageUrls[prevPhoto.id] : null
+  const nextImageUrl = nextPhoto ? imageUrls[nextPhoto.id] : null
+
   return (
     <div className="mb-6">
       <div 
         ref={containerRef}
-        className="relative w-full h-[400px] sm:h-[450px] overflow-hidden bg-gray-900 rounded-2xl"
+        className="relative w-full h-[500px] sm:h-[600px] overflow-visible bg-transparent flex items-center justify-center"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
       >
-        {/* Main image with smooth transition */}
-        {currentImageUrl ? (
+        {/* Left side image (tilted) */}
+        {prevImageUrl && photos.length > 1 && (
           <div 
-            key={currentPhoto.id}
-            className={`absolute inset-0 transition-opacity duration-300 ${
-              isTransitioning ? 'opacity-0' : 'opacity-100'
-            }`}
+            className="absolute left-0 sm:left-8 w-[120px] sm:w-[180px] h-[160px] sm:h-[240px] z-10 opacity-70 transition-all duration-500"
+            style={{
+              transform: 'perspective(1000px) rotateY(25deg) translateX(-20px)',
+              transformStyle: 'preserve-3d',
+            }}
           >
-            <Image
-              src={currentImageUrl}
-              alt={`Photo ${currentIndex + 1}`}
-              fill
-              className="object-contain"
-              sizes="100vw"
-              priority
-            />
-          </div>
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
-            <div className="text-gray-400">Loading photo...</div>
+            <div className="relative w-full h-full rounded-xl overflow-hidden shadow-2xl">
+              <Image
+                src={prevImageUrl}
+                alt="Previous photo"
+                fill
+                className="object-cover"
+                sizes="180px"
+              />
+            </div>
           </div>
         )}
 
-        {/* Instagram handle overlay */}
-        {currentPhoto?.instagram_handle && (
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-6 pb-8">
-            <p className="text-white text-base font-semibold">
-              @{currentPhoto.instagram_handle}
-            </p>
+        {/* Main center image */}
+        <div className="relative w-[280px] sm:w-[400px] h-[400px] sm:h-[550px] z-20 transition-all duration-500">
+          {currentImageUrl ? (
+            <div 
+              key={currentPhoto.id}
+              className={`relative w-full h-full rounded-2xl overflow-hidden shadow-2xl transition-opacity duration-500 ${
+                isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
+              }`}
+            >
+              <Image
+                src={currentImageUrl}
+                alt={`Photo ${currentIndex + 1}`}
+                fill
+                className="object-cover"
+                sizes="(max-width: 640px) 280px, 400px"
+                priority
+              />
+              {/* Instagram handle overlay */}
+              {currentPhoto?.instagram_handle && (
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 pb-6">
+                  <p className="text-white text-sm sm:text-base font-semibold">
+                    @{currentPhoto.instagram_handle}
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="w-full h-full rounded-2xl flex items-center justify-center bg-gray-800">
+              <div className="text-gray-400">Loading photo...</div>
+            </div>
+          )}
+        </div>
+
+        {/* Right side image (tilted) */}
+        {nextImageUrl && photos.length > 1 && (
+          <div 
+            className="absolute right-0 sm:right-8 w-[120px] sm:w-[180px] h-[160px] sm:h-[240px] z-10 opacity-70 transition-all duration-500"
+            style={{
+              transform: 'perspective(1000px) rotateY(-25deg) translateX(20px)',
+              transformStyle: 'preserve-3d',
+            }}
+          >
+            <div className="relative w-full h-full rounded-xl overflow-hidden shadow-2xl">
+              <Image
+                src={nextImageUrl}
+                alt="Next photo"
+                fill
+                className="object-cover"
+                sizes="180px"
+              />
+            </div>
           </div>
         )}
 
-        {/* Navigation arrows (desktop) */}
+        {/* Navigation arrows */}
         {photos.length > 1 && (
           <>
             <button
               onClick={goToPrevious}
-              className="hidden sm:flex absolute left-4 top-1/2 -translate-y-1/2 z-30 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full p-3 transition-all touch-manipulation"
+              className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-30 bg-white/90 hover:bg-white backdrop-blur-sm rounded-full p-2 sm:p-3 transition-all touch-manipulation shadow-lg"
               aria-label="Previous photo"
             >
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              <svg className="w-5 h-5 sm:w-6 sm:h-6 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
             <button
               onClick={goToNext}
-              className="hidden sm:flex absolute right-4 top-1/2 -translate-y-1/2 z-30 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full p-3 transition-all touch-manipulation"
+              className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-30 bg-white/90 hover:bg-white backdrop-blur-sm rounded-full p-2 sm:p-3 transition-all touch-manipulation shadow-lg"
               aria-label="Next photo"
             >
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              <svg className="w-5 h-5 sm:w-6 sm:h-6 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
               </svg>
             </button>
           </>
@@ -414,12 +465,12 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
                 onClick={() => {
                   setIsTransitioning(true)
                   setCurrentIndex(index)
-                  setTimeout(() => setIsTransitioning(false), 300)
+                  setTimeout(() => setIsTransitioning(false), 500)
                 }}
                 className={`h-2 rounded-full transition-all duration-300 ${
                   index === currentIndex 
-                    ? 'bg-white w-8' 
-                    : 'bg-white/50 w-2 hover:bg-white/70'
+                    ? 'bg-gray-900 w-8' 
+                    : 'bg-gray-400 w-2 hover:bg-gray-600'
                 }`}
                 aria-label={`Go to photo ${index + 1}`}
               />
