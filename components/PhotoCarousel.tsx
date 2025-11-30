@@ -24,11 +24,17 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [touchStart, setTouchStart] = useState<number | null>(null)
   const [touchEnd, setTouchEnd] = useState<number | null>(null)
+  const [mounted, setMounted] = useState(false)
   const autoAdvanceTimerRef = useRef<NodeJS.Timeout | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
   // Minimum swipe distance (in pixels)
   const minSwipeDistance = 50
+
+  // Ensure component is mounted (client-side only)
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const loadPhotos = useCallback(async () => {
     try {
@@ -249,6 +255,17 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
   // Show loading only on initial load when we have no photos
   const isInitialLoad = loading && photos.length === 0
 
+  // Don't render until mounted to prevent hydration mismatches
+  if (!mounted) {
+    return (
+      <div className="mb-6">
+        <div className="flex items-center justify-center h-[500px] sm:h-[600px] bg-gray-50 rounded-2xl mx-4">
+          <div className="text-gray-400">Loading...</div>
+        </div>
+      </div>
+    )
+  }
+
   if (isInitialLoad) {
     return (
       <div className="mb-6">
@@ -277,7 +294,7 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
 
   // Preload next and previous images aggressively
   useEffect(() => {
-    if (photos.length === 0) return
+    if (photos.length === 0 || typeof window === 'undefined') return
     
     const preloadImage = async (photo: Photo) => {
       if (!photo || imageUrls[photo.id]) return
@@ -290,7 +307,7 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
         const urlData = await urlResponse.json()
         if (urlData.url) {
           // Preload the actual image
-          const img = new window.Image()
+          const img = new Image()
           img.src = urlData.url
           img.onload = () => {
             setImageUrls(prev => ({ ...prev, [photo.id]: urlData.url }))
@@ -333,42 +350,28 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
       >
-        {/* Preload next and previous images (hidden) */}
-        {nextImageUrl && (
-          <div className="absolute opacity-0 pointer-events-none" style={{ width: 0, height: 0 }}>
-            <Image src={nextImageUrl} alt="preload next" width={1} height={1} />
-          </div>
-        )}
-        {prevImageUrl && (
-          <div className="absolute opacity-0 pointer-events-none" style={{ width: 0, height: 0 }}>
-            <Image src={prevImageUrl} alt="preload prev" width={1} height={1} />
-          </div>
-        )}
-
         {/* Main image with smooth transition */}
-        <div className="absolute inset-0">
-          {currentImageUrl ? (
-            <div 
-              key={currentPhoto.id}
-              className={`absolute inset-0 transition-opacity duration-300 ${
-                isTransitioning ? 'opacity-0' : 'opacity-100'
-              }`}
-            >
-              <Image
-                src={currentImageUrl}
-                alt={`Photo ${currentIndex + 1}`}
-                fill
-                className="object-contain"
-                sizes="100vw"
-                priority
-              />
-            </div>
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
-              <div className="text-gray-400">Loading photo...</div>
-            </div>
-          )}
-        </div>
+        {currentImageUrl ? (
+          <div 
+            key={currentPhoto.id}
+            className={`absolute inset-0 transition-opacity duration-300 ${
+              isTransitioning ? 'opacity-0' : 'opacity-100'
+            }`}
+          >
+            <Image
+              src={currentImageUrl}
+              alt={`Photo ${currentIndex + 1}`}
+              fill
+              className="object-contain"
+              sizes="100vw"
+              priority
+            />
+          </div>
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
+            <div className="text-gray-400">Loading photo...</div>
+          </div>
+        )}
 
         {/* Instagram handle overlay */}
         {currentPhoto?.instagram_handle && (
