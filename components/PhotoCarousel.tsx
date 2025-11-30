@@ -296,7 +296,7 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
   if (!mounted || (loading && photos.length === 0)) {
     return (
       <div className="mb-6">
-        <div className="flex items-center justify-center h-[500px] sm:h-[600px] bg-gray-50 rounded-2xl mx-4">
+        <div className="flex items-center justify-center h-[400px] sm:h-[450px] bg-gray-50 rounded-2xl mx-4">
           <div className="text-gray-400">Loading photos...</div>
         </div>
       </div>
@@ -344,7 +344,7 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
     <div className="mb-6">
       <div 
         ref={containerRef}
-        className="relative w-full h-[500px] sm:h-[600px] overflow-hidden bg-gray-900 rounded-2xl"
+        className="relative w-full h-[400px] sm:h-[450px] overflow-hidden bg-gray-900 rounded-2xl"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
