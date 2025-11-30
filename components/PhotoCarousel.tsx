@@ -42,8 +42,11 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
         setLoading(true)
       }
       
+      // Use AbortController for faster cancellation if needed
+      const controller = new AbortController()
       const response = await fetch(`/api/photos/${restaurantSlug}?t=${Date.now()}`, {
         cache: 'no-store',
+        signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -98,7 +101,27 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
           }
           
           // Load signed URLs for new photos only (preserve existing URLs)
+          // Prioritize loading first photo immediately, then others in parallel
           const existingUrls = { ...imageUrls }
+          
+          // Load first photo URL immediately for instant display
+          if (newPhotos.length > 0 && !existingUrls[newPhotos[0].id]) {
+            try {
+              const firstPhoto = newPhotos[0]
+              const urlResponse = await fetch(
+                `/api/photos/public-sign-url?path=${encodeURIComponent(firstPhoto.file_path)}&slug=${restaurantSlug}`,
+                { cache: 'no-store' }
+              )
+              const urlData = await urlResponse.json()
+              if (urlData.url) {
+                setImageUrls(prev => ({ ...prev, [firstPhoto.id]: urlData.url }))
+              }
+            } catch (error) {
+              console.error('Error loading first image URL:', error)
+            }
+          }
+          
+          // Load remaining photos in parallel
           const urlPromises = newPhotos.map(async (photo: Photo) => {
             // Skip if we already have the URL
             if (existingUrls[photo.id]) {
@@ -147,7 +170,7 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
   }, [restaurantSlug, photos.length, imageUrls])
 
   useEffect(() => {
-    // Initial load
+    // Initial load - start immediately
     loadPhotos()
     
     // Setup realtime subscription
@@ -163,9 +186,7 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
         },
         async (payload) => {
           // Immediately reload photos when a new one is inserted
-          setTimeout(() => {
-            loadPhotos()
-          }, 300)
+          loadPhotos()
         }
       )
       .subscribe()

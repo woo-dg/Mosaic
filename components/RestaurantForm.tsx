@@ -134,21 +134,18 @@ export default function RestaurantForm({ restaurantId, restaurantSlug, onSubmiss
         <ImageUpload key={formKey} maxImages={3} onImagesChange={setImages} />
 
         {/* 5 Star Rating - Mandatory */}
-        <div className="flex justify-center gap-4 py-2 relative">
+        <div className="flex justify-center gap-4 py-2">
           {[1, 2, 3, 4, 5].map((star) => (
             <button
               key={star}
               type="button"
               onClick={() => setRating(star)}
-              className={`text-7xl sm:text-8xl transition-all duration-200 relative ${
+              className={`text-8xl sm:text-9xl transition-all duration-200 ${
                 star <= rating ? 'text-yellow-400 scale-110' : 'text-gray-300'
               } hover:text-yellow-400 hover:scale-110`}
               aria-label={`${star} star`}
             >
               ★
-              {star === 5 && (
-                <span className="absolute -top-2 -right-2 text-2xl text-red-500 font-bold">*</span>
-              )}
             </button>
           ))}
         </div>
