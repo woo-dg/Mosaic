@@ -79,7 +79,14 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
         
         if (newPhotoIds !== currentPhotoIds) {
           const newPhotos = data.photos as Photo[]
+          const previousCount = photos.length
           setPhotos(newPhotos)
+          
+          // If a new photo was added (count increased), set it as the current index
+          if (newPhotos.length > previousCount && previousCount > 0) {
+            // Find the newest photo (should be first in the array since we order by created_at DESC)
+            setCurrentIndex(0)
+          }
           
           // Load signed URLs for new photos only (preserve existing URLs)
           const existingUrls = { ...imageUrls }
@@ -146,17 +153,18 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
           table: 'photos',
         },
         async (payload) => {
+          // Immediately reload photos when a new one is inserted
           setTimeout(() => {
             loadPhotos()
-          }, 500)
+          }, 300)
         }
       )
       .subscribe()
     
-    // Polling fallback (every 3 seconds)
+    // More aggressive polling for faster updates (every 1.5 seconds)
     const pollInterval = setInterval(() => {
       loadPhotos()
-    }, 3000)
+    }, 1500)
     
     // Refresh when page becomes visible
     const handleVisibilityChange = () => {

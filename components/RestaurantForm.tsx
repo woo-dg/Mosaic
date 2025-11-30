@@ -69,7 +69,12 @@ export default function RestaurantForm({ restaurantId, restaurantSlug, onSubmiss
         throw new Error(data.error || 'Failed to submit')
       }
 
-      // Reset form first
+      // Notify parent component to refresh carousel FIRST (before closing modal)
+      if (onSubmissionSuccess) {
+        onSubmissionSuccess()
+      }
+      
+      // Reset form
       setImages([])
       setFeedback('')
       setInstagramHandle('')
@@ -78,13 +83,8 @@ export default function RestaurantForm({ restaurantId, restaurantSlug, onSubmiss
       setAllowMarketing(false)
       setFormKey(prev => prev + 1) // Force ImageUpload to reset
       
-      // Show thank you modal
-      setShowThankYouModal(true)
-      
-      // Notify parent component to refresh carousel
-      if (onSubmissionSuccess) {
-        onSubmissionSuccess()
-      }
+      // Close modal immediately (no thank you modal)
+      // The carousel will show the new photo
     } catch (err: any) {
       setError(err.message || 'Something went wrong. Please try again.')
     } finally {
@@ -129,15 +129,15 @@ export default function RestaurantForm({ restaurantId, restaurantSlug, onSubmiss
         <ImageUpload key={formKey} maxImages={3} onImagesChange={setImages} />
 
         {/* 5 Star Rating */}
-        <div className="flex justify-center gap-2">
+        <div className="flex justify-center gap-3 py-2">
           {[1, 2, 3, 4, 5].map((star) => (
             <button
               key={star}
               type="button"
               onClick={() => setRating(star)}
-              className={`text-3xl transition-colors ${
-                star <= rating ? 'text-yellow-400' : 'text-gray-300'
-              } hover:text-yellow-400`}
+              className={`text-4xl sm:text-5xl transition-all duration-200 ${
+                star <= rating ? 'text-yellow-400 scale-110' : 'text-gray-300'
+              } hover:text-yellow-400 hover:scale-110`}
               aria-label={`${star} star`}
             >
               ★
@@ -154,11 +154,12 @@ export default function RestaurantForm({ restaurantId, restaurantSlug, onSubmiss
               type="text"
               value={instagramHandle}
               onChange={(e) => setInstagramHandle(e.target.value.replace('@', '').replace(/\s/g, ''))}
-              className={`w-full pl-6 pr-4 py-2 text-base border-0 border-b-2 focus:outline-none transition-colors touch-manipulation bg-transparent ${
-                instagramHandle.length > 0 
-                  ? 'border-green-500' 
-                  : 'border-gray-300 focus:border-green-500'
-              }`}
+              className="w-full pl-6 pr-4 py-2 text-base border-0 border-b-2 focus:outline-none transition-colors touch-manipulation bg-transparent text-gray-900 border-gray-300 focus:border-green-300"
+              style={{
+                borderBottomColor: instagramHandle.length > 0 
+                  ? `rgb(${34 + Math.min(instagramHandle.length * 15, 200)}, ${197 + Math.min(instagramHandle.length * 2, 58)}, ${94 + Math.min(instagramHandle.length * 2, 106)})`
+                  : undefined
+              }}
               placeholder="your social tag"
             />
           </div>
@@ -171,11 +172,12 @@ export default function RestaurantForm({ restaurantId, restaurantSlug, onSubmiss
             type="text"
             value={feedback}
             onChange={(e) => setFeedback(e.target.value)}
-            className={`w-full py-2 text-base border-0 border-b-2 focus:outline-none transition-colors touch-manipulation bg-transparent ${
-              feedback.length > 0 
-                ? 'border-green-500' 
-                : 'border-gray-300 focus:border-green-500'
-            }`}
+            className="w-full py-2 text-base border-0 border-b-2 focus:outline-none transition-colors touch-manipulation bg-transparent text-gray-900 border-gray-300 focus:border-green-300"
+            style={{
+              borderBottomColor: feedback.length > 0 
+                ? `rgb(${34 + Math.min(feedback.length * 15, 200)}, ${197 + Math.min(feedback.length * 2, 58)}, ${94 + Math.min(feedback.length * 2, 106)})`
+                : undefined
+            }}
             placeholder="leave a comment"
           />
         </div>

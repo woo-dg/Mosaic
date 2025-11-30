@@ -65,11 +65,13 @@ export default function GuestPage() {
     setShowModal(true)
   }
 
-  const handleSubmissionSuccess = () => {
-    // Force carousel to refresh by changing key
-    setCarouselKey(prev => prev + 1)
-    // Close modal after successful submission
+  const handleSubmissionSuccess = async () => {
+    // Close modal first
     setShowModal(false)
+    // Force carousel to refresh by changing key and wait a bit for the photo to be processed
+    setTimeout(() => {
+      setCarouselKey(prev => prev + 1)
+    }, 500)
   }
 
   return (
@@ -141,14 +143,14 @@ export default function GuestPage() {
           onClick={() => setShowModal(false)}
         >
           <div 
-            className="bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-3xl shadow-2xl max-w-sm w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-6">
-              <div className="flex justify-end mb-4">
+            <div className="p-4 sm:p-6">
+              <div className="flex justify-end mb-2">
                 <button
                   onClick={() => setShowModal(false)}
-                  className="text-gray-400 hover:text-gray-600 text-2xl font-light w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+                  className="text-gray-400 hover:text-gray-600 text-4xl font-light w-12 h-12 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
                   aria-label="Close modal"
                 >
                   ×
