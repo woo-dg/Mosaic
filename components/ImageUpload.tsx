@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import imageCompression from 'browser-image-compression'
 
 interface ImageUploadProps {
   maxImages?: number
@@ -10,26 +11,70 @@ interface ImageUploadProps {
 export default function ImageUpload({ maxImages = 3, onImagesChange }: ImageUploadProps) {
   const [images, setImages] = useState<File[]>([])
   const [previews, setPreviews] = useState<string[]>([])
+  const [compressing, setCompressing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     const imageFiles = files.filter(file => file.type.startsWith('image/'))
     
     if (imageFiles.length === 0) {
-      alert('Please select image files only')
+      setError('Please select image files only')
       return
     }
 
-    const newImages = [...images, ...imageFiles].slice(0, maxImages)
-    setImages(newImages)
-    onImagesChange(newImages)
+    setCompressing(true)
+    setError(null)
 
-    // Create previews
-    const newPreviews = newImages.map(file => URL.createObjectURL(file))
-    // Clean up old previews
-    previews.forEach(url => URL.revokeObjectURL(url))
-    setPreviews(newPreviews)
+    try {
+      const compressionOptions = {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1400,
+        initialQuality: 0.7,
+        useWebWorker: true,
+      }
+
+      const compressedImages: File[] = []
+      
+      for (const file of imageFiles) {
+        try {
+          const compressedFile = await imageCompression(file, compressionOptions)
+          
+          // Check if compressed file is still too large (>3MB)
+          if (compressedFile.size > 3 * 1024 * 1024) {
+            setError(`Image "${file.name}" is too large even after compression. Please try a smaller image.`)
+            continue
+          }
+          
+          compressedImages.push(compressedFile)
+        } catch (compressionError) {
+          console.error('Error compressing image:', compressionError)
+          setError(`Failed to compress "${file.name}". Please try another image.`)
+        }
+      }
+
+      if (compressedImages.length === 0) {
+        setError('No images could be processed. Please try again.')
+        setCompressing(false)
+        return
+      }
+
+      const newImages = [...images, ...compressedImages].slice(0, maxImages)
+      setImages(newImages)
+      onImagesChange(newImages)
+
+      // Create previews from compressed images
+      const newPreviews = newImages.map(file => URL.createObjectURL(file))
+      // Clean up old previews
+      previews.forEach(url => URL.revokeObjectURL(url))
+      setPreviews(newPreviews)
+    } catch (error) {
+      console.error('Error processing images:', error)
+      setError('Failed to process images. Please try again.')
+    } finally {
+      setCompressing(false)
+    }
   }
 
   const removeImage = (index: number) => {
@@ -42,6 +87,7 @@ export default function ImageUpload({ maxImages = 3, onImagesChange }: ImageUplo
     setImages(newImages)
     setPreviews(newPreviews)
     onImagesChange(newImages)
+    setError(null)
     
     // Reset file input
     if (fileInputRef.current) {
@@ -70,7 +116,7 @@ export default function ImageUpload({ maxImages = 3, onImagesChange }: ImageUplo
         <button
           type="button"
           onClick={handleClick}
-          disabled={images.length >= maxImages}
+          disabled={images.length >= maxImages || compressing}
           className="w-full py-6 sm:py-8 px-4 border-2 border-dashed border-gray-300 rounded-xl hover:border-gray-400 active:border-gray-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation bg-gray-50 hover:bg-gray-100"
         >
           <div className="text-center">
@@ -88,13 +134,21 @@ export default function ImageUpload({ maxImages = 3, onImagesChange }: ImageUplo
               />
             </svg>
             <p className="mt-2 text-sm sm:text-base text-gray-600 font-medium">
-              {images.length >= maxImages
+              {compressing
+                ? 'Compressing images...'
+                : images.length >= maxImages
                 ? 'Maximum images reached'
                 : 'Tap to add photos'}
             </p>
           </div>
         </button>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
+          {error}
+        </div>
+      )}
 
       {previews.length > 0 && (
         <div className="grid grid-cols-3 gap-3 sm:gap-4">
@@ -120,4 +174,3 @@ export default function ImageUpload({ maxImages = 3, onImagesChange }: ImageUplo
     </div>
   )
 }
-

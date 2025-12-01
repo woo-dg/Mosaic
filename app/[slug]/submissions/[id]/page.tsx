@@ -182,6 +182,7 @@ export default function SubmissionDetailPage() {
                       alt={`Photo ${photo.id}`}
                       fill
                       className="object-cover"
+                      unoptimized
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">

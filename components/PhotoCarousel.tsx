@@ -424,6 +424,7 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
                 fill
                 className="object-cover"
                 sizes="180px"
+                unoptimized
               />
             </div>
           </div>
@@ -445,6 +446,7 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
                 className="object-cover"
                 sizes="(max-width: 640px) 280px, 400px"
                 priority
+                unoptimized
               />
               {/* Instagram handle overlay */}
               {currentPhoto?.instagram_handle && (
@@ -478,6 +480,7 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
                 fill
                 className="object-cover"
                 sizes="180px"
+                unoptimized
               />
             </div>
           </div>
