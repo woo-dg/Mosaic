@@ -97,6 +97,9 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
                 delete updated[newPhotos[0].id]
                 return updated
               })
+              // Set transition state for smooth appearance
+              setIsTransitioning(true)
+              setTimeout(() => setIsTransitioning(false), 500)
             }
           }
           
@@ -450,7 +453,7 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
               />
               {/* Instagram handle overlay */}
               {currentPhoto?.instagram_handle && (
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 pb-6">
+                <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/80 via-black/40 to-transparent p-4 pt-6">
                   <p className="text-white text-sm sm:text-base font-semibold">
                     @{currentPhoto.instagram_handle}
                   </p>
@@ -458,8 +461,9 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
               )}
             </div>
           ) : (
-            <div className="w-full h-full rounded-2xl flex items-center justify-center bg-gray-800">
-              <div className="text-gray-400">Loading photo...</div>
+            <div className="w-full h-full rounded-2xl flex flex-col items-center justify-center bg-gray-800">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-white mb-3"></div>
+              <div className="text-gray-300 text-sm">Loading photo...</div>
             </div>
           )}
         </div>

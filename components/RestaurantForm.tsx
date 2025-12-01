@@ -87,8 +87,11 @@ export default function RestaurantForm({ restaurantId, restaurantSlug, onSubmiss
       }
 
       // Notify parent component to refresh carousel FIRST (before closing modal)
+      // Add a small delay to ensure submission is processed
       if (onSubmissionSuccess) {
-        onSubmissionSuccess()
+        setTimeout(() => {
+          onSubmissionSuccess()
+        }, 300)
       }
       
       // Reset form

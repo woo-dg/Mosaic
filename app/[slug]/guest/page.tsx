@@ -15,6 +15,7 @@ export default function GuestPage() {
   const [error, setError] = useState(false)
   const [carouselKey, setCarouselKey] = useState(0)
   const [showModal, setShowModal] = useState(false)
+  const [isLoadingNewPhoto, setIsLoadingNewPhoto] = useState(false)
 
   useEffect(() => {
     const loadRestaurant = async () => {
@@ -66,18 +67,27 @@ export default function GuestPage() {
   }
 
   const handleSubmissionSuccess = async () => {
-    // Close modal immediately
-    setShowModal(false)
-    // Force carousel to refresh multiple times to catch the new photo
+    // Show loading state first
+    setIsLoadingNewPhoto(true)
+    
+    // Close modal after a brief delay to let user see success
+    setTimeout(() => {
+      setShowModal(false)
+    }, 400)
+    
+    // Force carousel to refresh after photo has time to process
     setTimeout(() => {
       setCarouselKey(prev => prev + 1)
-    }, 200)
+    }, 600)
+    
     setTimeout(() => {
       setCarouselKey(prev => prev + 1)
-    }, 800)
+    }, 1200)
+    
+    // Hide loading state after photo should be loaded
     setTimeout(() => {
-      setCarouselKey(prev => prev + 1)
-    }, 1500)
+      setIsLoadingNewPhoto(false)
+    }, 2000)
   }
 
   return (
@@ -120,7 +130,19 @@ export default function GuestPage() {
         {/* Photo Carousel - Centered with padding */}
         <div className="bg-white py-4 px-4">
           <div className="max-w-4xl mx-auto">
-            <PhotoCarousel key={carouselKey} restaurantSlug={restaurant.slug} onUploadClick={handleUploadClick} />
+            {isLoadingNewPhoto ? (
+              <div className="mb-6 px-4">
+                <div className="bg-gray-50 rounded-2xl p-12 text-center border-2 border-dashed border-gray-300">
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+                    <p className="text-gray-700 font-medium text-lg">Loading your image...</p>
+                    <p className="text-gray-500 text-sm">This will just take a moment</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <PhotoCarousel key={carouselKey} restaurantSlug={restaurant.slug} onUploadClick={handleUploadClick} />
+            )}
           </div>
         </div>
 
