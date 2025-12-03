@@ -41,17 +41,21 @@ export async function GET(
     const restaurantData = restaurant as { id: string }
 
     // Get submissions with photos (only those with allow_marketing = true for public display)
+    // Also include recent submissions (last 5 minutes) to show immediately after upload
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
     const { data: submissions, error: submissionsError } = await supabase
       .from('submissions')
       .select(`
         id,
         created_at,
         instagram_handle,
+        feedback,
+        rating,
         allow_marketing,
         photos(id, file_path)
       `)
       .eq('restaurant_id', restaurantData.id)
-      .eq('allow_marketing', true)
+      .or(`allow_marketing.eq.true,created_at.gte.${fiveMinutesAgo}`)
       .order('created_at', { ascending: false })
       .limit(100)
 
@@ -63,15 +67,20 @@ export async function GET(
     }
 
     // Flatten photos with submission info
-    // Filter to only include photos from submissions with allow_marketing = true
+    // Include photos from submissions with allow_marketing = true OR recent submissions (last 5 minutes)
     const photos = (submissions || [])
-      .filter((submission: any) => submission.allow_marketing === true)
+      .filter((submission: any) => {
+        const isRecent = new Date(submission.created_at) >= new Date(fiveMinutesAgo)
+        return submission.allow_marketing === true || isRecent
+      })
       .flatMap((submission: any) =>
         (submission.photos || []).map((photo: any) => ({
           id: photo.id,
           file_path: photo.file_path,
           created_at: submission.created_at,
           instagram_handle: submission.instagram_handle,
+          feedback: submission.feedback,
+          rating: submission.rating,
         }))
       )
 

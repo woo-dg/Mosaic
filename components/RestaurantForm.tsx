@@ -49,6 +49,7 @@ export default function RestaurantForm({ restaurantId, restaurantSlug, onSubmiss
       formData.append('restaurantSlug', restaurantSlug)
       formData.append('feedback', feedback)
       formData.append('instagramHandle', instagramHandle)
+      formData.append('rating', rating.toString())
       formData.append('agreedPrivate', 'true')
       formData.append('allowMarketing', allowMarketing ? 'true' : 'false')
 

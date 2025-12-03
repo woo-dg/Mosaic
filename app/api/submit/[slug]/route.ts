@@ -44,6 +44,7 @@ export async function POST(
     const restaurantSlug = formData.get('restaurantSlug') as string
     const feedback = formData.get('feedback') as string | null
     const instagramHandle = formData.get('instagramHandle') as string | null
+    const rating = formData.get('rating') ? parseInt(formData.get('rating') as string) : null
     const agreedPrivate = formData.get('agreedPrivate') === 'true'
     const allowMarketing = formData.get('allowMarketing') === 'true'
     const images = formData.getAll('images') as File[]
@@ -152,6 +153,7 @@ export async function POST(
         restaurant_id: restaurantData.id,
         feedback: feedback?.trim() || null,
         instagram_handle: instagramHandle?.trim() || null,
+        rating: rating,
         allow_marketing: allowMarketing,
         agreed_private: true,
       } as any)

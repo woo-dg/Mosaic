@@ -9,6 +9,8 @@ interface Photo {
   file_path: string
   created_at: string
   instagram_handle: string | null
+  feedback: string | null
+  rating: number | null
 }
 
 interface PhotoCarouselProps {
@@ -25,6 +27,7 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
   const [touchStart, setTouchStart] = useState<number | null>(null)
   const [touchEnd, setTouchEnd] = useState<number | null>(null)
   const [mounted, setMounted] = useState(false)
+  const [isZoomed, setIsZoomed] = useState(false)
   const autoAdvanceTimerRef = useRef<NodeJS.Timeout | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -237,9 +240,14 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
     }
   }, [restaurantSlug, loadPhotos])
 
-  // Auto-advance slideshow
+  // Auto-advance slideshow (paused when zoomed)
   useEffect(() => {
-    if (photos.length <= 1 || isTransitioning) return
+    if (photos.length <= 1 || isTransitioning || isZoomed) {
+      if (autoAdvanceTimerRef.current) {
+        clearInterval(autoAdvanceTimerRef.current)
+      }
+      return
+    }
     
     // Clear existing timer
     if (autoAdvanceTimerRef.current) {
@@ -248,7 +256,7 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
     
     // Set up auto-advance (4 seconds)
     autoAdvanceTimerRef.current = setInterval(() => {
-      if (!isTransitioning) {
+      if (!isTransitioning && !isZoomed) {
         goToNext()
       }
     }, 4000)
@@ -258,10 +266,11 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
         clearInterval(autoAdvanceTimerRef.current)
       }
     }
-  }, [photos.length, isTransitioning, currentIndex])
+  }, [photos.length, isTransitioning, currentIndex, isZoomed, goToNext])
 
   const goToNext = useCallback(() => {
     if (photos.length === 0 || isTransitioning) return
+    setIsZoomed(false) // Reset zoom when changing photos
     setIsTransitioning(true)
     setCurrentIndex((prev) => (prev + 1) % photos.length)
     setTimeout(() => setIsTransitioning(false), 500)
@@ -269,6 +278,7 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
 
   const goToPrevious = useCallback(() => {
     if (photos.length === 0 || isTransitioning) return
+    setIsZoomed(false) // Reset zoom when changing photos
     setIsTransitioning(true)
     setCurrentIndex((prev) => (prev - 1 + photos.length) % photos.length)
     setTimeout(() => setIsTransitioning(false), 500)
@@ -434,20 +444,25 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
         )}
 
         {/* Main center image */}
-        <div className="relative w-[280px] sm:w-[400px] h-[400px] sm:h-[550px] z-20 transition-all duration-500">
+        <div className={`relative z-20 transition-all duration-500 ${
+          isZoomed 
+            ? 'w-[320px] sm:w-[460px] h-[460px] sm:h-[630px]' 
+            : 'w-[280px] sm:w-[400px] h-[400px] sm:h-[550px]'
+        }`}>
           {currentImageUrl ? (
             <div 
               key={currentPhoto.id}
-              className={`relative w-full h-full rounded-2xl overflow-hidden shadow-2xl transition-opacity duration-500 ${
+              className={`relative w-full h-full rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 cursor-pointer ${
                 isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
               }`}
+              onClick={() => setIsZoomed(!isZoomed)}
             >
               <Image
                 src={currentImageUrl}
                 alt={`Photo ${currentIndex + 1}`}
                 fill
                 className="object-cover"
-                sizes="(max-width: 640px) 280px, 400px"
+                sizes="(max-width: 640px) 320px, 460px"
                 priority
                 unoptimized
               />
@@ -457,6 +472,35 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
                   <p className="text-white text-sm sm:text-base font-semibold">
                     @{currentPhoto.instagram_handle}
                   </p>
+                </div>
+              )}
+              {/* Rating and feedback overlay - shown when zoomed */}
+              {isZoomed && (currentPhoto?.rating || currentPhoto?.feedback) && (
+                <div className="absolute top-4 right-4 bg-black/80 backdrop-blur-sm rounded-xl p-4 max-w-[200px] sm:max-w-[250px] z-40">
+                  {currentPhoto?.rating && (
+                    <div className="flex items-center gap-1 mb-2">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <span
+                          key={star}
+                          className={`text-lg sm:text-xl ${
+                            star <= (currentPhoto.rating || 0)
+                              ? 'text-yellow-400'
+                              : 'text-gray-500'
+                          }`}
+                        >
+                          ★
+                        </span>
+                      ))}
+                      <span className="text-white text-sm sm:text-base ml-1">
+                        {currentPhoto.rating}/5
+                      </span>
+                    </div>
+                  )}
+                  {currentPhoto?.feedback && (
+                    <p className="text-white text-sm sm:text-base leading-relaxed">
+                      {currentPhoto.feedback}
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -514,13 +558,14 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
           </>
         )}
 
-        {/* Dots indicator */}
+        {/* Dots indicator - limited to 10 */}
         {photos.length > 1 && (
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex gap-2">
-            {photos.map((_, index) => (
+            {photos.slice(0, 10).map((_, index) => (
               <button
                 key={index}
                 onClick={() => {
+                  setIsZoomed(false) // Reset zoom when clicking dots
                   setIsTransitioning(true)
                   setCurrentIndex(index)
                   setTimeout(() => setIsTransitioning(false), 500)
