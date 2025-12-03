@@ -240,6 +240,22 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
     }
   }, [restaurantSlug, loadPhotos])
 
+  const goToNext = useCallback(() => {
+    if (photos.length === 0 || isTransitioning) return
+    setIsZoomed(false) // Reset zoom when changing photos
+    setIsTransitioning(true)
+    setCurrentIndex((prev) => (prev + 1) % photos.length)
+    setTimeout(() => setIsTransitioning(false), 500)
+  }, [photos.length, isTransitioning])
+
+  const goToPrevious = useCallback(() => {
+    if (photos.length === 0 || isTransitioning) return
+    setIsZoomed(false) // Reset zoom when changing photos
+    setIsTransitioning(true)
+    setCurrentIndex((prev) => (prev - 1 + photos.length) % photos.length)
+    setTimeout(() => setIsTransitioning(false), 500)
+  }, [photos.length, isTransitioning])
+
   // Auto-advance slideshow (paused when zoomed)
   useEffect(() => {
     if (photos.length <= 1 || isTransitioning || isZoomed) {
@@ -267,22 +283,6 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
       }
     }
   }, [photos.length, isTransitioning, currentIndex, isZoomed, goToNext])
-
-  const goToNext = useCallback(() => {
-    if (photos.length === 0 || isTransitioning) return
-    setIsZoomed(false) // Reset zoom when changing photos
-    setIsTransitioning(true)
-    setCurrentIndex((prev) => (prev + 1) % photos.length)
-    setTimeout(() => setIsTransitioning(false), 500)
-  }, [photos.length, isTransitioning])
-
-  const goToPrevious = useCallback(() => {
-    if (photos.length === 0 || isTransitioning) return
-    setIsZoomed(false) // Reset zoom when changing photos
-    setIsTransitioning(true)
-    setCurrentIndex((prev) => (prev - 1 + photos.length) % photos.length)
-    setTimeout(() => setIsTransitioning(false), 500)
-  }, [photos.length, isTransitioning])
 
   // Touch handlers for swipe
   const onTouchStart = (e: React.TouchEvent) => {
