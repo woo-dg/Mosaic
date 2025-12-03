@@ -60,9 +60,56 @@ export async function GET(
       .limit(100)
 
     if (submissionsError) {
+      console.error('Submissions error:', submissionsError)
+      // If rating column doesn't exist, try without it
+      if (submissionsError.message?.includes('rating') || submissionsError.message?.includes('column')) {
+        const { data: submissionsRetry, error: retryError } = await supabase
+          .from('submissions')
+          .select(`
+            id,
+            created_at,
+            instagram_handle,
+            feedback,
+            allow_marketing,
+            photos(id, file_path)
+          `)
+          .eq('restaurant_id', restaurantData.id)
+          .or(`allow_marketing.eq.true,created_at.gte.${fiveMinutesAgo}`)
+          .order('created_at', { ascending: false })
+          .limit(100)
+        
+        if (retryError) {
+          return NextResponse.json(
+            { error: 'Failed to fetch photos', photos: [] },
+            { status: 500, headers: { 'Content-Type': 'application/json' } }
+          )
+        }
+        
+        // Use retry data without rating
+        const photos = (submissionsRetry || [])
+          .filter((submission: any) => {
+            const isRecent = new Date(submission.created_at) >= new Date(fiveMinutesAgo)
+            return submission.allow_marketing === true || isRecent
+          })
+          .flatMap((submission: any) =>
+            (submission.photos || []).map((photo: any) => ({
+              id: photo.id,
+              file_path: photo.file_path,
+              created_at: submission.created_at,
+              instagram_handle: submission.instagram_handle || null,
+              feedback: submission.feedback || null,
+              rating: null,
+            }))
+          )
+        
+        return NextResponse.json({ photos: photos || [] }, {
+          headers: { 'Content-Type': 'application/json' }
+        })
+      }
+      
       return NextResponse.json(
-        { error: 'Failed to fetch photos' },
-        { status: 500 }
+        { error: 'Failed to fetch photos', photos: [] },
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
       )
     }
 
@@ -78,9 +125,9 @@ export async function GET(
           id: photo.id,
           file_path: photo.file_path,
           created_at: submission.created_at,
-          instagram_handle: submission.instagram_handle,
-          feedback: submission.feedback,
-          rating: submission.rating,
+          instagram_handle: submission.instagram_handle || null,
+          feedback: submission.feedback || null,
+          rating: submission.rating || null,
         }))
       )
 

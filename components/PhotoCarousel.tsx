@@ -41,15 +41,10 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
 
   const loadPhotos = useCallback(async () => {
     try {
-      if (photos.length === 0) {
-        setLoading(true)
-      }
+      setLoading(true)
       
-      // Use AbortController for faster cancellation if needed
-      const controller = new AbortController()
       const response = await fetch(`/api/photos/${restaurantSlug}?t=${Date.now()}`, {
         cache: 'no-store',
-        signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -58,10 +53,7 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
       if (!response.ok) {
         const text = await response.text()
         console.error('Failed to fetch photos:', response.status, text)
-        if (photos.length === 0) {
-          setPhotos([])
-          setLoading(false)
-        }
+        setPhotos([])
         return
       }
       
@@ -69,111 +61,69 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
       if (!contentType || !contentType.includes('application/json')) {
         const text = await response.text()
         console.error('Invalid response type:', contentType, text.substring(0, 100))
-        if (photos.length === 0) {
-          setPhotos([])
-          setLoading(false)
-        }
+        setPhotos([])
         return
       }
       
       const data = await response.json()
 
       if (data.photos && Array.isArray(data.photos)) {
-        // Only update if photos actually changed (compare IDs)
-        const newPhotoIds = data.photos.map((p: Photo) => p.id).join(',')
-        const currentPhotoIds = photos.map(p => p.id).join(',')
-        
-        if (newPhotoIds !== currentPhotoIds) {
-          const newPhotos = data.photos as Photo[]
-          const previousCount = photos.length
-          setPhotos(newPhotos)
-          
+        const newPhotos = data.photos as Photo[]
+        setPhotos((prevPhotos) => {
+          const previousCount = prevPhotos.length
           // If a new photo was added (count increased), set it as the current index
-          if (newPhotos.length > previousCount) {
-            // Find the newest photo (should be first in the array since we order by created_at DESC)
+          if (newPhotos.length > previousCount && previousCount === 0) {
             setCurrentIndex(0)
-            // Force a refresh by clearing image URLs for the new photo
-            if (newPhotos[0]) {
-              // Remove the URL for the new photo so it gets reloaded
-              setImageUrls(prev => {
-                const updated = { ...prev }
-                delete updated[newPhotos[0].id]
-                return updated
-              })
-              // Set transition state for smooth appearance
-              setIsTransitioning(true)
-              setTimeout(() => setIsTransitioning(false), 500)
-            }
           }
+          return newPhotos
+        })
+        
+        // Load signed URLs for photos that we don't have yet
+        setImageUrls((prevUrls) => {
+          const photosToLoad = newPhotos.filter(photo => !prevUrls[photo.id])
           
-          // Load signed URLs for new photos only (preserve existing URLs)
-          // Prioritize loading first photo immediately, then others in parallel
-          const existingUrls = { ...imageUrls }
-          
-          // Load first photo URL immediately for instant display
-          if (newPhotos.length > 0 && !existingUrls[newPhotos[0].id]) {
-            try {
-              const firstPhoto = newPhotos[0]
-              const urlResponse = await fetch(
-                `/api/photos/public-sign-url?path=${encodeURIComponent(firstPhoto.file_path)}&slug=${restaurantSlug}`,
-                { cache: 'no-store' }
-              )
-              const urlData = await urlResponse.json()
-              if (urlData.url) {
-                setImageUrls(prev => ({ ...prev, [firstPhoto.id]: urlData.url }))
+          if (photosToLoad.length > 0) {
+            const urlPromises = photosToLoad.map(async (photo: Photo) => {
+              try {
+                const urlResponse = await fetch(
+                  `/api/photos/public-sign-url?path=${encodeURIComponent(photo.file_path)}&slug=${restaurantSlug}`,
+                  { cache: 'no-store' }
+                )
+                const urlData = await urlResponse.json()
+                if (urlData.url) {
+                  return { id: photo.id, url: urlData.url }
+                }
+              } catch (error) {
+                console.error('Error loading image URL:', error)
               }
-            } catch (error) {
-              console.error('Error loading first image URL:', error)
-            }
-          }
-          
-          // Load remaining photos in parallel
-          const urlPromises = newPhotos.map(async (photo: Photo) => {
-            // Skip if we already have the URL
-            if (existingUrls[photo.id]) {
-              return { id: photo.id, url: existingUrls[photo.id] }
-            }
+              return null
+            })
             
-            try {
-              const urlResponse = await fetch(
-                `/api/photos/public-sign-url?path=${encodeURIComponent(photo.file_path)}&slug=${restaurantSlug}`,
-                { cache: 'no-store' }
-              )
-              const urlData = await urlResponse.json()
-              if (urlData.url) {
-                return { id: photo.id, url: urlData.url }
-              }
-            } catch (error) {
-              console.error('Error loading image URL:', error)
-            }
-            return null
-          })
+            Promise.all(urlPromises).then((urlResults) => {
+              setImageUrls((currentUrls) => {
+                const urls: Record<string, string> = { ...currentUrls }
+                urlResults.forEach((result) => {
+                  if (result) {
+                    urls[result.id] = result.url
+                  }
+                })
+                return urls
+              })
+            })
+          }
           
-          const urlResults = await Promise.all(urlPromises)
-          const urls: Record<string, string> = { ...existingUrls }
-          urlResults.forEach((result) => {
-            if (result) {
-              urls[result.id] = result.url
-            }
-          })
-          setImageUrls(urls)
-        }
+          return prevUrls
+        })
       } else {
-        if (photos.length === 0) {
-          setPhotos([])
-        }
+        setPhotos([])
       }
     } catch (error) {
       console.error('Error loading photos:', error)
-      if (photos.length === 0) {
-        setPhotos([])
-      }
+      setPhotos([])
     } finally {
-      if (photos.length === 0) {
-        setLoading(false)
-      }
+      setLoading(false)
     }
-  }, [restaurantSlug, photos.length, imageUrls])
+  }, [restaurantSlug])
 
   useEffect(() => {
     // Initial load - start immediately
