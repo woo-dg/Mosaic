@@ -424,33 +424,34 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
                   </p>
                 </div>
               )}
-              {/* Rating and feedback overlay - shown when zoomed */}
-              {isZoomed && (currentPhoto?.rating || currentPhoto?.feedback) && (
-                <div className="absolute top-4 right-4 bg-black/80 backdrop-blur-sm rounded-xl p-4 max-w-[200px] sm:max-w-[250px] z-40">
-                  {currentPhoto?.rating && (
-                    <div className="flex items-center gap-1 mb-2">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <span
-                          key={star}
-                          className={`text-lg sm:text-xl ${
-                            star <= (currentPhoto.rating || 0)
-                              ? 'text-yellow-400'
-                              : 'text-gray-500'
-                          }`}
-                        >
-                          ★
-                        </span>
-                      ))}
-                      <span className="text-white text-sm sm:text-base ml-1">
-                        {currentPhoto.rating}/5
+              {/* Rating overlay - always visible when rating exists */}
+              {currentPhoto?.rating && (
+                <div className="absolute top-4 right-4 bg-black/80 backdrop-blur-sm rounded-xl p-3 z-40">
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <span
+                        key={star}
+                        className={`text-base sm:text-lg ${
+                          star <= (currentPhoto.rating || 0)
+                            ? 'text-yellow-400'
+                            : 'text-gray-500'
+                        }`}
+                      >
+                        ★
                       </span>
-                    </div>
-                  )}
-                  {currentPhoto?.feedback && (
-                    <p className="text-white text-sm sm:text-base leading-relaxed">
-                      {currentPhoto.feedback}
-                    </p>
-                  )}
+                    ))}
+                    <span className="text-white text-xs sm:text-sm ml-1">
+                      {currentPhoto.rating}/5
+                    </span>
+                  </div>
+                </div>
+              )}
+              {/* Feedback overlay - shown when zoomed */}
+              {isZoomed && currentPhoto?.feedback && (
+                <div className="absolute top-16 right-4 bg-black/80 backdrop-blur-sm rounded-xl p-4 max-w-[200px] sm:max-w-[250px] z-40">
+                  <p className="text-white text-sm sm:text-base leading-relaxed">
+                    {currentPhoto.feedback}
+                  </p>
                 </div>
               )}
             </div>
@@ -508,26 +509,56 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
           </>
         )}
 
-        {/* Dots indicator - limited to 10 */}
+        {/* Dots indicator - limited to 10, showing window around current index */}
         {photos.length > 1 && (
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex gap-2">
-            {photos.slice(0, 10).map((_, index) => (
-              <button
-                key={index}
-                onClick={() => {
-                  setIsZoomed(false) // Reset zoom when clicking dots
-                  setIsTransitioning(true)
-                  setCurrentIndex(index)
-                  setTimeout(() => setIsTransitioning(false), 500)
-                }}
-                className={`h-2 rounded-full transition-all duration-300 ${
-                  index === currentIndex 
-                    ? 'bg-gray-900 w-8' 
-                    : 'bg-gray-400 w-2 hover:bg-gray-600'
-                }`}
-                aria-label={`Go to photo ${index + 1}`}
-              />
-            ))}
+            {(() => {
+              const maxDots = 10
+              const totalPhotos = photos.length
+              
+              // If we have 10 or fewer photos, show all
+              if (totalPhotos <= maxDots) {
+                return photos.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => {
+                      setIsZoomed(false)
+                      setIsTransitioning(true)
+                      setCurrentIndex(index)
+                      setTimeout(() => setIsTransitioning(false), 500)
+                    }}
+                    className={`h-2 rounded-full transition-all duration-300 ${
+                      index === currentIndex 
+                        ? 'bg-gray-900 w-8' 
+                        : 'bg-gray-400 w-2 hover:bg-gray-600'
+                    }`}
+                    aria-label={`Go to photo ${index + 1}`}
+                  />
+                ))
+              }
+              
+              // If we have more than 10 photos, show a window around current index
+              const startIndex = Math.max(0, Math.min(currentIndex - Math.floor(maxDots / 2), totalPhotos - maxDots))
+              const endIndex = Math.min(startIndex + maxDots, totalPhotos)
+              
+              return Array.from({ length: endIndex - startIndex }, (_, i) => startIndex + i).map((index) => (
+                <button
+                  key={index}
+                  onClick={() => {
+                    setIsZoomed(false)
+                    setIsTransitioning(true)
+                    setCurrentIndex(index)
+                    setTimeout(() => setIsTransitioning(false), 500)
+                  }}
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    index === currentIndex 
+                      ? 'bg-gray-900 w-8' 
+                      : 'bg-gray-400 w-2 hover:bg-gray-600'
+                  }`}
+                  aria-label={`Go to photo ${index + 1}`}
+                />
+              ))
+            })()}
           </div>
         )}
 
