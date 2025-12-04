@@ -424,8 +424,8 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
                   </p>
                 </div>
               )}
-              {/* Rating overlay - always visible when rating exists */}
-              {currentPhoto?.rating !== null && currentPhoto?.rating !== undefined && (
+              {/* Rating overlay - shown when zoomed */}
+              {isZoomed && currentPhoto?.rating !== null && currentPhoto?.rating !== undefined && (
                 <div className="absolute top-4 right-4 bg-black/80 backdrop-blur-sm rounded-xl p-3 z-40">
                   <div className="flex items-center gap-1">
                     {[1, 2, 3, 4, 5].map((star) => (
