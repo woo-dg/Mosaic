@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, slug } = body
+    const { name, slug, menuUrl } = body
 
     if (!name || !slug) {
       return NextResponse.json(
@@ -97,6 +97,30 @@ export async function POST(request: NextRequest) {
         { error: managerError.message || 'Failed to link manager' },
         { status: 500 }
       )
+    }
+
+    // If menu URL provided, create menu source and trigger processing
+    if (menuUrl && menuUrl.trim()) {
+      const { data: menuSource, error: menuSourceError } = await supabase
+        .from('menu_sources')
+        .insert({
+          restaurant_id: restaurantData.id,
+          source_type: 'url',
+          source_url: menuUrl.trim(),
+          status: 'pending',
+        } as any)
+        .select()
+        .single()
+
+      if (!menuSourceError && menuSource) {
+        // Trigger async menu processing (don't wait for it)
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.headers.get('origin') || 'http://localhost:3000'
+        fetch(`${baseUrl}/api/menu/process`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ restaurantId: restaurantData.id, menuSourceId: menuSource.id })
+        }).catch(err => console.error('Failed to trigger menu processing:', err))
+      }
     }
 
     return NextResponse.json({ success: true, restaurant: restaurantData })

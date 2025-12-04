@@ -11,6 +11,11 @@ interface Photo {
   instagram_handle: string | null
   feedback: string | null
   rating: number | null
+  menu_item: {
+    id: string
+    name: string
+    category: string | null
+  } | null
 }
 
 interface PhotoCarouselProps {
@@ -416,9 +421,26 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
                 priority
                 unoptimized
               />
-              {/* Instagram handle overlay */}
+              {/* Menu item overlay - shown at top */}
+              {currentPhoto?.menu_item && (
+                <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/90 via-black/50 to-transparent p-4 pt-6 z-30">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {currentPhoto.menu_item.category && (
+                      <span className="text-xs sm:text-sm text-gray-300 uppercase tracking-wide">
+                        {currentPhoto.menu_item.category}
+                      </span>
+                    )}
+                    <h3 className="text-white text-base sm:text-lg font-bold">
+                      {currentPhoto.menu_item.name}
+                    </h3>
+                  </div>
+                </div>
+              )}
+              {/* Instagram handle overlay - shown below menu item or at top if no menu item */}
               {currentPhoto?.instagram_handle && (
-                <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/80 via-black/40 to-transparent p-4 pt-6">
+                <div className={`absolute left-0 right-0 bg-gradient-to-b from-black/80 via-black/40 to-transparent p-4 z-30 ${
+                  currentPhoto?.menu_item ? 'top-12 sm:top-14' : 'top-0 pt-6'
+                }`}>
                   <p className="text-white text-sm sm:text-base font-semibold">
                     @{currentPhoto.instagram_handle}
                   </p>

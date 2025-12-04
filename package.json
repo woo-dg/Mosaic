@@ -12,8 +12,10 @@
     "@clerk/nextjs": "^5.1.0",
     "@supabase/supabase-js": "^2.39.0",
     "browser-image-compression": "^2.0.2",
+    "cheerio": "^1.1.2",
     "framer-motion": "^12.23.24",
     "next": "14.2.5",
+    "openai": "^6.9.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "uuid": "^9.0.1"

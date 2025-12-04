@@ -225,24 +225,48 @@ export async function POST(
       }
 
       // Create photo record
-      const { error: photoError } = await supabase
+      const { data: photoData, error: photoError } = await supabase
         .from('photos')
         .insert({
           submission_id: submissionId,
           file_path: filePath,
         } as any)
+        .select()
+        .single()
 
-      if (photoError) {
+      if (photoError || !photoData) {
         // Clean up: delete uploaded file and submission
         await supabase.storage.from('submissions').remove([filePath])
         await supabase.from('submissions').delete().eq('id', submissionId)
         return NextResponse.json(
-          { error: photoError.message || 'Failed to save photo record' },
+          { error: photoError?.message || 'Failed to save photo record' },
           { 
             status: 500,
             headers: { 'Content-Type': 'application/json' }
           }
         )
+      }
+
+      // Get signed URL for classification (async, don't wait)
+      const { data: signedUrlData } = await supabase.storage
+        .from('submissions')
+        .createSignedUrl(filePath, 3600) // 1 hour expiry
+
+      if (signedUrlData?.signedUrl && photoData.id) {
+        // Trigger async classification (don't wait for it)
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
+                       request.headers.get('origin') || 
+                       'http://localhost:3000'
+        
+        fetch(`${baseUrl}/api/photos/classify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            photoId: photoData.id,
+            restaurantId: restaurantData.id,
+            imageUrl: signedUrlData.signedUrl
+          })
+        }).catch(err => console.error('Failed to trigger photo classification:', err))
       }
 
       uploadedPhotos.push(filePath)
