@@ -257,36 +257,23 @@ export async function POST(request: NextRequest) {
       console.log('Created new menu source:', menuSourceId)
     }
 
-    // Trigger menu processing via separate endpoint (better timeout handling)
-    let baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.headers.get('origin') || 'http://localhost:3000'
-    // Remove trailing slash if present
-    baseUrl = baseUrl.replace(/\/$/, '')
-    const processUrl = `${baseUrl}/api/menu/process`
+    // Process menu directly (don't block response, but log errors properly)
+    console.log('=== STARTING MENU PROCESSING INLINE ===')
+    console.log('Restaurant ID:', restaurantId)
+    console.log('Menu Source ID:', menuSourceId)
+    console.log('Menu URL:', menuUrl.trim())
     
-    console.log('Triggering menu processing at:', processUrl)
-    console.log('Base URL:', baseUrl)
-    
-    // Fire and forget - don't wait for response
-    fetch(processUrl, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ 
-        restaurantId: restaurantId, 
-        menuSourceId: menuSourceId 
+    // Run processing asynchronously but catch all errors
+    processMenuAsync(restaurantId, menuSourceId, menuUrl.trim(), supabase)
+      .then(() => {
+        console.log('Menu processing completed successfully')
       })
-    })
-    .then(async (response) => {
-      const text = await response.text()
-      console.log('Menu processing response:', response.status, text.substring(0, 500))
-      if (!response.ok) {
-        console.error('Menu processing failed:', text)
-      }
-    })
-    .catch(err => {
-      console.error('Failed to trigger menu processing:', err.message || err)
-    })
+      .catch((err: any) => {
+        console.error('=== MENU PROCESSING FAILED IN UPDATE ROUTE ===')
+        console.error('Error:', err.message)
+        console.error('Stack:', err.stack)
+        // Don't throw - we already returned success to user
+      })
 
     return NextResponse.json({ 
       success: true,
