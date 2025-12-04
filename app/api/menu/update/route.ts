@@ -13,17 +13,39 @@ const openai = new OpenAI({
 
 async function scrapeMenu(url: string): Promise<string> {
   try {
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      }
-    })
+    console.log('Fetching menu URL:', url)
     
-    if (!response.ok) {
-      throw new Error(`Failed to fetch menu: ${response.statusText}`)
+    // Add timeout to fetch (10 seconds max)
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+    
+    let response: Response
+    try {
+      response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        },
+        signal: controller.signal
+      })
+      clearTimeout(timeoutId)
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId)
+      if (fetchError.name === 'AbortError') {
+        throw new Error('Menu fetch timed out after 10 seconds')
+      }
+      throw new Error(`Failed to fetch menu: ${fetchError.message}`)
     }
     
+    console.log('Menu fetch response status:', response.status)
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch menu: ${response.status} ${response.statusText}`)
+    }
+    
+    console.log('Reading menu HTML...')
     const html = await response.text()
+    console.log('Menu HTML length:', html.length)
+    
     const $ = cheerio.load(html)
     
     $('script, style, nav, header, footer').remove()
@@ -52,13 +74,22 @@ async function scrapeMenu(url: string): Promise<string> {
       menuText = $('body').text()
     }
     
-    return menuText
+    const cleanedText = menuText
       .replace(/\s+/g, ' ')
       .replace(/\n+/g, '\n')
       .trim()
       .substring(0, 10000)
-  } catch (error) {
+    
+    console.log('Menu content extracted, length:', cleanedText.length)
+    
+    return cleanedText
+  } catch (error: any) {
     console.error('Error scraping menu:', error)
+    console.error('Error details:', {
+      message: error.message,
+      name: error.name,
+      stack: error.stack
+    })
     throw error
   }
 }
@@ -244,9 +275,15 @@ async function processMenuAsync(
     
     // Scrape menu
     console.log('Scraping menu...')
-    const menuContent = await scrapeMenu(menuUrl)
-    console.log('Menu content length:', menuContent.length)
-    console.log('Menu content preview:', menuContent.substring(0, 300))
+    let menuContent: string
+    try {
+      menuContent = await scrapeMenu(menuUrl)
+      console.log('Menu content length:', menuContent.length)
+      console.log('Menu content preview:', menuContent.substring(0, 300))
+    } catch (scrapeError: any) {
+      console.error('Menu scraping failed:', scrapeError)
+      throw new Error(`Failed to scrape menu: ${scrapeError.message}`)
+    }
     
     if (!menuContent || menuContent.length < 50) {
       throw new Error('Failed to extract menu content from URL - page may be empty or inaccessible')
