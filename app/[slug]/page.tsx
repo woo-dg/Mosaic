@@ -52,6 +52,21 @@ export default function RestaurantDashboardPage() {
     }
   }, [authorized, filterMarketing, filterDays])
 
+  // Single polling effect for menu status - replaces multiple overlapping intervals
+  useEffect(() => {
+    if (!authorized || (menuStatus !== 'pending' && menuStatus !== 'processing')) {
+      return
+    }
+
+    const statusInterval = setInterval(() => {
+      loadMenuUrl()
+    }, 5000) // Poll every 5 seconds
+
+    return () => {
+      clearInterval(statusInterval)
+    }
+  }, [authorized, menuStatus])
+
   const checkAuthorization = async () => {
     if (!user) return
 
@@ -189,14 +204,6 @@ export default function RestaurantDashboardPage() {
       if (menuSource) {
         setMenuUrl(menuSource.source_url || '')
         setMenuStatus(menuSource.status || '')
-        
-        // If status is pending or processing, keep checking
-        if (menuSource.status === 'pending' || menuSource.status === 'processing') {
-          // Check again in 5 seconds
-          setTimeout(() => {
-            loadMenuUrl()
-          }, 5000)
-        }
       }
     } catch (error) {
       // No menu source exists yet, that's okay
@@ -244,18 +251,12 @@ export default function RestaurantDashboardPage() {
         return
       }
 
-      setMenuStatus('pending')
+      // Set status to processing (will be updated by polling)
+      setMenuStatus('processing')
       setMenuUrlSaved(true)
       
-      // Reload menu URL to get updated status periodically
-      const checkStatus = setInterval(() => {
-        loadMenuUrl()
-      }, 3000)
-      
-      // Stop checking after 60 seconds
-      setTimeout(() => {
-        clearInterval(checkStatus)
-      }, 60000)
+      // Immediately reload to get the actual status
+      loadMenuUrl()
       
       // Clear saved state after 5 seconds
       setTimeout(() => {
@@ -334,18 +335,25 @@ export default function RestaurantDashboardPage() {
                 disabled={menuUrlLoading || menuUrlSaving}
               />
               {menuStatus && (
-                <p className="mt-2 text-xs text-gray-500">
-                  Status: <span className="font-medium capitalize">{menuStatus}</span>
-                  {menuStatus === 'completed' && (
-                    <span className="ml-2 text-green-600">✓ Menu items extracted</span>
-                  )}
+                <div className="mt-2">
+                  <p className="text-xs text-gray-500">
+                    Status: <span className="font-medium capitalize">{menuStatus}</span>
+                    {menuStatus === 'completed' && (
+                      <span className="ml-2 text-green-600">✓ Menu items extracted</span>
+                    )}
+                    {menuStatus === 'processing' && (
+                      <span className="ml-2 text-blue-600">⏳ Processing menu...</span>
+                    )}
+                    {menuStatus === 'failed' && (
+                      <span className="ml-2 text-red-600">✗ Processing failed</span>
+                    )}
+                  </p>
                   {menuStatus === 'processing' && (
-                    <span className="ml-2 text-blue-600">⏳ Processing menu...</span>
+                    <p className="mt-1 text-xs text-amber-600">
+                      ⚠️ Note: If processing takes too long, check your Supabase quota (egress may be exceeded)
+                    </p>
                   )}
-                  {menuStatus === 'failed' && (
-                    <span className="ml-2 text-red-600">✗ Processing failed</span>
-                  )}
-                </p>
+                </div>
               )}
               <p className="mt-1 text-xs text-gray-500">
                 We'll automatically extract menu items from your website

@@ -291,7 +291,7 @@ async function processMenuAsync(
     console.log(`Saved ${savedCount} out of ${menuItems.length} menu items`)
     
     // Update status to completed
-    await (supabase
+    const { error: updateError } = await (supabase
       .from('menu_sources') as any)
       .update({ 
         status: 'completed', 
@@ -299,15 +299,30 @@ async function processMenuAsync(
       })
       .eq('id', menuSourceId)
     
+    if (updateError) {
+      console.error('Failed to update status to completed:', updateError)
+      // Try to update to failed instead
+      await (supabase
+        .from('menu_sources') as any)
+        .update({ status: 'failed' })
+        .eq('id', menuSourceId)
+      throw new Error(`Database update failed: ${updateError.message}. This may be due to Supabase quota limits.`)
+    }
+    
     console.log('=== MENU PROCESSING COMPLETED ===')
   } catch (error: any) {
     console.error('=== MENU PROCESSING FAILED ===')
     console.error('Error:', error.message)
     console.error('Stack:', error.stack)
     
-    await (supabase
-      .from('menu_sources') as any)
-      .update({ status: 'failed' })
-      .eq('id', menuSourceId)
+    // Try to update status to failed, but don't throw if this also fails
+    try {
+      await (supabase
+        .from('menu_sources') as any)
+        .update({ status: 'failed' })
+        .eq('id', menuSourceId)
+    } catch (statusError) {
+      console.error('Failed to update status to failed:', statusError)
+    }
   }
 }
