@@ -32,6 +32,7 @@ export default function RestaurantDashboardPage() {
   const [menuUrl, setMenuUrl] = useState<string>('')
   const [menuUrlLoading, setMenuUrlLoading] = useState(true)
   const [menuUrlSaving, setMenuUrlSaving] = useState(false)
+  const [menuUrlSaved, setMenuUrlSaved] = useState(false)
   const [menuStatus, setMenuStatus] = useState<string>('')
 
   useEffect(() => {
@@ -188,6 +189,14 @@ export default function RestaurantDashboardPage() {
       if (menuSource) {
         setMenuUrl(menuSource.source_url || '')
         setMenuStatus(menuSource.status || '')
+        
+        // If status is pending or processing, keep checking
+        if (menuSource.status === 'pending' || menuSource.status === 'processing') {
+          // Check again in 5 seconds
+          setTimeout(() => {
+            loadMenuUrl()
+          }, 5000)
+        }
       }
     } catch (error) {
       // No menu source exists yet, that's okay
@@ -231,19 +240,31 @@ export default function RestaurantDashboardPage() {
 
       if (!response.ok) {
         alert(data.error || 'Failed to save menu URL')
+        setMenuUrlSaved(false)
         return
       }
 
       setMenuStatus('pending')
-      alert('Menu URL saved! Processing will start shortly.')
+      setMenuUrlSaved(true)
       
-      // Reload menu URL to get updated status
-      setTimeout(() => {
+      // Reload menu URL to get updated status periodically
+      const checkStatus = setInterval(() => {
         loadMenuUrl()
-      }, 2000)
+      }, 3000)
+      
+      // Stop checking after 60 seconds
+      setTimeout(() => {
+        clearInterval(checkStatus)
+      }, 60000)
+      
+      // Clear saved state after 5 seconds
+      setTimeout(() => {
+        setMenuUrlSaved(false)
+      }, 5000)
     } catch (error) {
       console.error('Error saving menu URL:', error)
       alert('Failed to save menu URL')
+      setMenuUrlSaved(false)
     } finally {
       setMenuUrlSaving(false)
     }
@@ -333,10 +354,16 @@ export default function RestaurantDashboardPage() {
             <div className="flex items-end">
               <button
                 onClick={handleSaveMenuUrl}
-                disabled={menuUrlSaving || !menuUrl.trim() || menuUrlLoading}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition whitespace-nowrap"
+                disabled={menuUrlSaving || !menuUrl.trim() || menuUrlLoading || menuUrlSaved}
+                className={`px-6 py-2 rounded-lg font-medium transition whitespace-nowrap ${
+                  menuUrlSaved 
+                    ? 'bg-gray-500 text-white cursor-default' 
+                    : menuUrlSaving
+                    ? 'bg-blue-500 text-white cursor-wait'
+                    : 'bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed'
+                }`}
               >
-                {menuUrlSaving ? 'Saving...' : 'Save & Process'}
+                {menuUrlSaved ? 'Saved' : menuUrlSaving ? 'Saving...' : 'Save & Process'}
               </button>
             </div>
           </div>

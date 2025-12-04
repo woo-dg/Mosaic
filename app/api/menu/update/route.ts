@@ -107,24 +107,34 @@ export async function POST(request: NextRequest) {
       console.log('Created new menu source:', menuSourceId)
     }
 
-    // Trigger menu processing
+    // Trigger menu processing - use await to ensure it starts
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
                    request.headers.get('origin') || 
                    'http://localhost:3000'
     
-    console.log('Triggering menu processing for:', { restaurantId, menuSourceId })
+    console.log('Triggering menu processing for:', { restaurantId, menuSourceId, baseUrl })
     
+    // Don't await - fire and forget, but log the result
     fetch(`${baseUrl}/api/menu/process`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        // Forward authorization if available
+        ...(request.headers.get('authorization') && {
+          'authorization': request.headers.get('authorization')!
+        })
+      },
       body: JSON.stringify({ restaurantId, menuSourceId })
     })
     .then(async (response) => {
       const text = await response.text()
-      console.log('Menu processing response:', response.status, text.substring(0, 200))
+      console.log('Menu processing response:', response.status, text.substring(0, 500))
+      if (!response.ok) {
+        console.error('Menu processing failed:', text)
+      }
     })
     .catch(err => {
-      console.error('Failed to trigger menu processing:', err)
+      console.error('Failed to trigger menu processing:', err.message || err)
     })
 
     return NextResponse.json({ 

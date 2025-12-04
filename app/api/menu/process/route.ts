@@ -72,39 +72,57 @@ async function scrapeMenu(url: string): Promise<string> {
 
 async function extractMenuItems(menuContent: string): Promise<any[]> {
   try {
+    console.log('Calling OpenAI to extract menu items...')
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini', // Using cheaper model
       messages: [{
         role: 'system',
-        content: `You are a menu parser. Extract menu items from the provided menu text. 
-        Return a JSON object with a "items" array. Each item should have:
-        - name: string (required)
-        - category: string (optional, e.g., "appetizer", "main", "dessert", "drink", "side")
-        - description: string (optional)
+        content: `You are a menu parser. Extract ALL menu items from the provided menu text. 
+        Return a JSON object with an "items" array. Each item should have:
+        - name: string (required) - the exact name of the dish/item
+        - category: string (optional, e.g., "appetizer", "main", "dessert", "drink", "side", "taco", "burrito", "entree")
+        - description: string (optional) - brief description if available
         - price: string (optional, keep original format)
         
-        Only extract actual food/drink items, not headers or other text.`
+        Extract ALL food and drink items you can find. Include items like:
+        - Tacos, burritos, quesadillas
+        - Appetizers, entrees, desserts
+        - Drinks, beverages
+        - Any food items listed
+        
+        Be thorough and extract as many items as possible.`
       }, {
         role: 'user',
-        content: `Extract menu items from this menu:\n\n${menuContent}`
+        content: `Extract ALL menu items from this menu. Be comprehensive and include every food and drink item you can find:\n\n${menuContent.substring(0, 8000)}`
       }],
       response_format: { type: 'json_object' },
-      temperature: 0.3
+      temperature: 0.2,
+      max_tokens: 2000
     })
     
-    const result = JSON.parse(completion.choices[0].message.content || '{"items": []}')
-    return result.items || []
-  } catch (error) {
+    const responseContent = completion.choices[0].message.content || '{"items": []}'
+    console.log('OpenAI response:', responseContent.substring(0, 500))
+    
+    const result = JSON.parse(responseContent)
+    const items = result.items || []
+    console.log('Extracted', items.length, 'menu items')
+    
+    return items
+  } catch (error: any) {
     console.error('Error extracting menu items:', error)
+    console.error('Error details:', error.message, error.stack)
     return []
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const { restaurantId, menuSourceId } = await request.json()
+    const body = await request.json().catch(() => ({}))
+    const { restaurantId, menuSourceId } = body
     
-    console.log('Menu processing started:', { restaurantId, menuSourceId })
+    console.log('=== MENU PROCESSING API CALLED ===')
+    console.log('Request body:', { restaurantId, menuSourceId })
+    console.log('Full body:', body)
     
     if (!restaurantId || !menuSourceId) {
       console.error('Missing required fields:', { restaurantId, menuSourceId })
@@ -166,22 +184,25 @@ export async function POST(request: NextRequest) {
     
     try {
       // Scrape menu content
+      console.log('Starting to scrape menu from:', menuSourceData.source_url)
       const menuContent = await scrapeMenu(menuSourceData.source_url)
       console.log('Menu content scraped, length:', menuContent.length)
+      console.log('Menu content preview:', menuContent.substring(0, 500))
       
       if (!menuContent || menuContent.length < 50) {
-        console.error('Menu content too short:', menuContent.length)
-        throw new Error('Failed to extract menu content from URL')
+        console.error('Menu content too short:', menuContent?.length || 0)
+        throw new Error('Failed to extract menu content from URL - page may be empty or inaccessible')
       }
       
       // Use LLM to extract menu items
       console.log('Extracting menu items with LLM...')
       const menuItems = await extractMenuItems(menuContent)
       console.log('Menu items extracted:', menuItems.length)
+      console.log('Sample menu items:', menuItems.slice(0, 3))
       
       if (menuItems.length === 0) {
         console.error('No menu items extracted from content')
-        throw new Error('No menu items extracted')
+        throw new Error('No menu items extracted - the menu page may not contain recognizable menu items')
       }
       
       // Save menu items (use upsert to avoid duplicates)
@@ -192,24 +213,30 @@ export async function POST(request: NextRequest) {
           return null
         }
         
-        console.log('Saving menu item:', item.name)
-        return (supabase.from('menu_items') as any).upsert({
+        const menuItemData = {
           restaurant_id: restaurantId,
           name: item.name.trim(),
           category: item.category?.trim() || null,
           description: item.description?.trim() || null,
           price: item.price?.trim() || null,
-        }, {
+        }
+        
+        console.log('Saving menu item:', menuItemData.name)
+        return (supabase.from('menu_items') as any).upsert(menuItemData, {
           onConflict: 'restaurant_id,name'
         })
       })
       
-      const results = await Promise.all(insertPromises.filter(p => p !== null))
-      const errors = results.filter(r => r?.error).map(r => r.error)
+      const validPromises = insertPromises.filter(p => p !== null)
+      console.log('Saving', validPromises.length, 'menu items...')
+      
+      const results = await Promise.all(validPromises)
+      const errors = results.filter((r: any) => r?.error).map((r: any) => r.error)
       if (errors.length > 0) {
         console.error('Errors saving menu items:', errors)
+        throw new Error(`Failed to save ${errors.length} menu items`)
       } else {
-        console.log('All menu items saved successfully')
+        console.log('All menu items saved successfully:', validPromises.length)
       }
       
       // Update status to completed
