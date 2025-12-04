@@ -14,25 +14,42 @@ async function scrapeMenu(url: string): Promise<string> {
   try {
     console.log('Fetching menu URL:', url)
     
-    // Add timeout to fetch (10 seconds max)
+    // Add timeout to fetch (5 seconds max - Vercel Hobby has 10s limit)
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+    const timeoutId = setTimeout(() => {
+      console.log('Timeout triggered, aborting fetch after 5 seconds...')
+      controller.abort()
+    }, 5000) // 5 second timeout - must complete before Vercel kills function
     
     let response: Response
     try {
+      console.log('Starting fetch request...')
       response = await fetch(url, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'Connection': 'keep-alive',
+          'Upgrade-Insecure-Requests': '1',
+          'Sec-Fetch-Dest': 'document',
+          'Sec-Fetch-Mode': 'navigate',
+          'Sec-Fetch-Site': 'none'
         },
-        signal: controller.signal
+        signal: controller.signal,
+        redirect: 'follow',
+        // @ts-ignore
+        cache: 'no-store'
       })
       clearTimeout(timeoutId)
+      console.log('Fetch completed, status:', response.status)
     } catch (fetchError: any) {
       clearTimeout(timeoutId)
-      if (fetchError.name === 'AbortError') {
-        throw new Error('Menu fetch timed out after 10 seconds')
+      console.error('Fetch error caught:', fetchError.name, fetchError.message)
+      if (fetchError.name === 'AbortError' || fetchError.message?.includes('aborted')) {
+        throw new Error('Menu fetch timed out after 5 seconds - website may be slow or blocking requests')
       }
-      throw new Error(`Failed to fetch menu: ${fetchError.message}`)
+      throw new Error(`Failed to fetch menu: ${fetchError.message || fetchError}`)
     }
     
     console.log('Menu fetch response status:', response.status)
