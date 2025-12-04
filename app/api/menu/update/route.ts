@@ -13,53 +13,48 @@ const openai = new OpenAI({
 
 async function scrapeMenu(url: string): Promise<string> {
   try {
-    console.log('Fetching menu URL:', url)
+    console.log('Fetching menu URL via Scrape.do:', url)
     
-    // Use Promise.race with a timeout promise for reliable timeout handling
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => {
-        console.log('Fetch timeout after 4 seconds')
-        reject(new Error('FETCH_TIMEOUT'))
-      }, 4000)
-    })
+    const apiKey = process.env.SCRAPE_DO_API_KEY || 'ff3db5e401b84545a6e90faa64ad6d0cdffdc773a52'
+    if (!apiKey) {
+      throw new Error('SCRAPE_DO_API_KEY not configured')
+    }
     
-    const fetchPromise = fetch(url, {
-      method: 'GET',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; MenuScraper/1.0)',
-        'Accept': 'text/html'
-      },
-      // @ts-ignore - Next.js fetch options
-      next: { revalidate: 0 }
-    }).then(async (res) => {
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}: ${res.statusText}`)
-      }
-      return res
-    })
+    // Use Scrape.do API to fetch the page with headless browser
+    const scrapeUrl = `https://api.scrape.do?token=${apiKey}&url=${encodeURIComponent(url)}&render=true`
+    
+    console.log('Calling Scrape.do API...')
+    const controller = new AbortController()
+    const timeout = setTimeout(() => {
+      console.log('Scrape.do timeout after 10 seconds')
+      controller.abort()
+    }, 10000) // 10 second timeout for Scrape.do
     
     let response: Response
     try {
-      console.log('Starting fetch with 4s timeout...')
-      response = await Promise.race([fetchPromise, timeoutPromise])
-      console.log('Fetch completed, status:', response.status)
-    } catch (fetchError: any) {
-      console.error('Fetch failed:', fetchError.message)
-      if (fetchError.message === 'FETCH_TIMEOUT') {
-        throw new Error('Menu website is too slow or blocking server requests. Please try a different menu URL or contact support for manual menu entry.')
+      response = await fetch(scrapeUrl, {
+        method: 'GET',
+        signal: controller.signal,
+        // @ts-ignore
+        next: { revalidate: 0 }
+      })
+      clearTimeout(timeout)
+      console.log('Scrape.do response received, status:', response.status)
+    } catch (err: any) {
+      clearTimeout(timeout)
+      if (err.name === 'AbortError') {
+        throw new Error('Scrape.do request timed out after 10 seconds')
       }
-      throw fetchError
+      throw new Error(`Scrape.do error: ${err.message}`)
     }
     
-    console.log('Reading menu HTML with 3s timeout...')
-    const htmlTimeout = new Promise<never>((_, reject) => {
-      setTimeout(() => {
-        console.log('HTML read timeout after 3 seconds')
-        reject(new Error('HTML_READ_TIMEOUT'))
-      }, 3000)
-    })
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Unknown error')
+      throw new Error(`Scrape.do API error: ${response.status} ${response.statusText} - ${errorText.substring(0, 200)}`)
+    }
     
-    const html = await Promise.race([response.text(), htmlTimeout])
+    console.log('Reading HTML from Scrape.do...')
+    const html = await response.text()
     console.log('Menu HTML length:', html.length)
     
     console.log('Loading HTML into cheerio...')
@@ -319,8 +314,20 @@ async function processMenuAsync(
       console.log('Menu content length:', menuContent.length)
       console.log('Menu content preview:', menuContent.substring(0, 300))
     } catch (scrapeError: any) {
-      console.error('Menu scraping failed:', scrapeError)
-      throw new Error(`Failed to scrape menu: ${scrapeError.message}`)
+      console.error('Menu scraping failed:', scrapeError.message)
+      // If timeout, try one more time
+      if (scrapeError.message === 'FETCH_TIMEOUT_2S') {
+        console.log('First attempt timed out, trying one more time...')
+        try {
+          menuContent = await scrapeMenu(menuUrl)
+          console.log('Retry successful, menu content length:', menuContent.length)
+        } catch (retryError: any) {
+          console.error('Retry also failed:', retryError.message)
+          throw new Error('Menu website is blocking or too slow. The website may be blocking server requests. Please contact support for alternative menu entry methods.')
+        }
+      } else {
+        throw new Error(`Failed to scrape menu: ${scrapeError.message}`)
+      }
     }
     
     if (!menuContent || menuContent.length < 50) {
