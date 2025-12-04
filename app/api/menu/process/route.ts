@@ -161,12 +161,22 @@ async function extractMenuItems(menuContent: string): Promise<any[]> {
   }
 }
 
+// Handle GET requests with proper error
+export async function GET() {
+  return NextResponse.json(
+    { error: 'This endpoint only accepts POST requests' },
+    { status: 405 }
+  )
+}
+
 export async function POST(request: NextRequest) {
+  console.log('=== MENU PROCESSING API CALLED ===')
+  console.log('Timestamp:', new Date().toISOString())
+  
   try {
     const body = await request.json().catch(() => ({}))
     const { restaurantId, menuSourceId } = body
     
-    console.log('=== MENU PROCESSING API CALLED ===')
     console.log('Request body:', { restaurantId, menuSourceId })
     console.log('Full body:', body)
     

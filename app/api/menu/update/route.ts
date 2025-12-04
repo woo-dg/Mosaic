@@ -258,10 +258,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Trigger menu processing via separate endpoint (better timeout handling)
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.headers.get('origin') || 'http://localhost:3000'
+    let baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.headers.get('origin') || 'http://localhost:3000'
+    // Remove trailing slash if present
+    baseUrl = baseUrl.replace(/\/$/, '')
     const processUrl = `${baseUrl}/api/menu/process`
     
     console.log('Triggering menu processing at:', processUrl)
+    console.log('Base URL:', baseUrl)
     
     // Fire and forget - don't wait for response
     fetch(processUrl, {
