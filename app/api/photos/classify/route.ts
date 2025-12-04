@@ -174,8 +174,8 @@ Be flexible with matching - if the photo shows a burrito and there's a "Burrito"
       if (itemNameLower.includes(identifiedItemName) || identifiedItemName.includes(itemNameLower)) return true
       
       // Word-based match (e.g., "chicken burrito" matches "burrito")
-      const hasCommonWords = itemWords.some(word => 
-        identifiedWords.some(idWord => word === idWord || word.includes(idWord) || idWord.includes(word))
+      const hasCommonWords = itemWords.some((word: string) => 
+        identifiedWords.some((idWord: string) => word === idWord || word.includes(idWord) || idWord.includes(word))
       )
       if (hasCommonWords && itemWords.length <= 3) return true
       
