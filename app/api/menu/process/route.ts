@@ -126,14 +126,14 @@ export async function POST(request: NextRequest) {
     }
     
     // Get menu source
-    const { data: menuSource, error: menuSourceError } = await supabase
+    const menuSourceResult = await supabase
       .from('menu_sources')
       .select('*')
       .eq('id', menuSourceId)
       .eq('restaurant_id', restaurantId)
       .single()
     
-    if (menuSourceError || !menuSource) {
+    if (menuSourceResult.error || !menuSourceResult.data) {
       return NextResponse.json(
         { error: 'Menu source not found' },
         { status: 404 }
@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Type assertion
-    const menuSourceData = menuSource as unknown as MenuSource
+    const menuSourceData = menuSourceResult.data as unknown as MenuSource
     
     if (menuSourceData.source_type !== 'url' || !menuSourceData.source_url) {
       return NextResponse.json(
@@ -151,9 +151,9 @@ export async function POST(request: NextRequest) {
     }
     
     // Update status to processing
-    await supabase
-      .from('menu_sources')
-      .update({ status: 'processing' } as any)
+    await (supabase
+      .from('menu_sources') as any)
+      .update({ status: 'processing' })
       .eq('id', menuSourceId)
     
     try {
@@ -189,12 +189,12 @@ export async function POST(request: NextRequest) {
       await Promise.all(insertPromises.filter(p => p !== null))
       
       // Update status to completed
-      await supabase
-        .from('menu_sources')
+      await (supabase
+        .from('menu_sources') as any)
         .update({ 
           status: 'completed', 
           scraped_at: new Date().toISOString() 
-        } as any)
+        })
         .eq('id', menuSourceId)
       
       return NextResponse.json({ 
@@ -205,9 +205,9 @@ export async function POST(request: NextRequest) {
       console.error('Menu processing error:', error)
       
       // Update status to failed
-      await supabase
-        .from('menu_sources')
-        .update({ status: 'failed' } as any)
+      await (supabase
+        .from('menu_sources') as any)
+        .update({ status: 'failed' })
         .eq('id', menuSourceId)
       
       return NextResponse.json(
