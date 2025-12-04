@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { useRouter, useParams } from 'next/navigation'
 import { createAuthenticatedClient } from '@/lib/supabase/auth-client'
@@ -34,6 +34,7 @@ export default function RestaurantDashboardPage() {
   const [menuUrlSaving, setMenuUrlSaving] = useState(false)
   const [menuUrlSaved, setMenuUrlSaved] = useState(false)
   const [menuStatus, setMenuStatus] = useState<string>('')
+  const loadMenuUrlRef = useRef(false) // Prevent concurrent calls
 
   useEffect(() => {
     if (!isLoaded) return
@@ -45,11 +46,66 @@ export default function RestaurantDashboardPage() {
     checkAuthorization()
   }, [user, isLoaded, slug])
 
+  const loadMenuUrl = useCallback(async (showLoading = false) => {
+    if (!user || !authorized || loadMenuUrlRef.current) return
+
+    loadMenuUrlRef.current = true
+    if (showLoading) {
+      setMenuUrlLoading(true)
+    }
+    
+    try {
+      const token = await getToken()
+      const supabase = await createAuthenticatedClient(token)
+      
+      // Get restaurant ID
+      const { data: restaurant } = await supabase
+        .from('restaurants')
+        .select('id')
+        .eq('slug', slug)
+        .single()
+
+      if (!restaurant) {
+        loadMenuUrlRef.current = false
+        return
+      }
+
+      const restaurantData = restaurant as { id: string }
+
+      // Get most recent menu source
+      const { data: menuSource, error } = await (supabase
+        .from('menu_sources') as any)
+        .select('source_url, status')
+        .eq('restaurant_id', restaurantData.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error loading menu URL:', error)
+      }
+
+      if (menuSource) {
+        setMenuUrl(menuSource.source_url || '')
+        setMenuStatus(menuSource.status || '')
+      }
+    } catch (error) {
+      // No menu source exists yet, that's okay
+      if (showLoading) {
+        console.log('No menu source found')
+      }
+    } finally {
+      setMenuUrlLoading(false)
+      loadMenuUrlRef.current = false
+    }
+  }, [user, authorized, slug, getToken])
+
   useEffect(() => {
     if (authorized === true) {
       loadSubmissions()
-      loadMenuUrl()
+      loadMenuUrl(true) // Show loading on initial load
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authorized, filterMarketing, filterDays])
 
   // Single polling effect for menu status - replaces multiple overlapping intervals
@@ -59,12 +115,13 @@ export default function RestaurantDashboardPage() {
     }
 
     const statusInterval = setInterval(() => {
-      loadMenuUrl()
+      loadMenuUrl(false) // Don't show loading spinner during polling
     }, 5000) // Poll every 5 seconds
 
     return () => {
       clearInterval(statusInterval)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authorized, menuStatus])
 
   const checkAuthorization = async () => {
@@ -173,45 +230,6 @@ export default function RestaurantDashboardPage() {
     }
   }
 
-  const loadMenuUrl = async () => {
-    if (!user || !authorized) return
-
-    setMenuUrlLoading(true)
-    try {
-      const token = await getToken()
-      const supabase = await createAuthenticatedClient(token)
-      
-      // Get restaurant ID
-      const { data: restaurant } = await supabase
-        .from('restaurants')
-        .select('id')
-        .eq('slug', slug)
-        .single()
-
-      if (!restaurant) return
-
-      const restaurantData = restaurant as { id: string }
-
-      // Get most recent menu source
-      const { data: menuSource } = await (supabase
-        .from('menu_sources') as any)
-        .select('source_url, status')
-        .eq('restaurant_id', restaurantData.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
-
-      if (menuSource) {
-        setMenuUrl(menuSource.source_url || '')
-        setMenuStatus(menuSource.status || '')
-      }
-    } catch (error) {
-      // No menu source exists yet, that's okay
-      console.log('No menu source found')
-    } finally {
-      setMenuUrlLoading(false)
-    }
-  }
 
   const handleSaveMenuUrl = async () => {
     if (!user || !authorized || !menuUrl.trim()) return
@@ -255,13 +273,12 @@ export default function RestaurantDashboardPage() {
       setMenuStatus('processing')
       setMenuUrlSaved(true)
       
-      // Immediately reload to get the actual status
-      loadMenuUrl()
-      
       // Clear saved state after 5 seconds
       setTimeout(() => {
         setMenuUrlSaved(false)
       }, 5000)
+      
+      // Polling effect will handle status updates automatically
     } catch (error) {
       console.error('Error saving menu URL:', error)
       alert('Failed to save menu URL')
