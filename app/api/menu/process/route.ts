@@ -20,19 +20,27 @@ async function scrapeMenu(url: string): Promise<string> {
     }
     
     // Use Scrape.do API to fetch the page with headless browser
-    const scrapeUrl = `https://api.scrape.do?token=${apiKey}&url=${encodeURIComponent(url)}&render=true`
+    // Format: https://api.scrape.do?token=TOKEN&url=URL
+    const scrapeUrl = `https://api.scrape.do?token=${apiKey}&url=${encodeURIComponent(url)}`
     
+    console.log('Scrape.do API Key (first 10 chars):', apiKey.substring(0, 10) + '...')
+    console.log('Scrape.do URL (without token):', `https://api.scrape.do?token=***&url=${encodeURIComponent(url)}`)
     console.log('Calling Scrape.do API...')
+    
     const controller = new AbortController()
     const timeout = setTimeout(() => {
-      console.log('Scrape.do timeout after 10 seconds')
+      console.log('Scrape.do timeout after 15 seconds')
       controller.abort()
-    }, 10000) // 10 second timeout for Scrape.do
+    }, 15000) // 15 second timeout for Scrape.do (they need time to render)
     
     let response: Response
     try {
+      console.log('Making fetch request to Scrape.do...')
       response = await fetch(scrapeUrl, {
         method: 'GET',
+        headers: {
+          'User-Agent': 'Mosaic-Menu-Scraper/1.0'
+        },
         signal: controller.signal,
         // @ts-ignore
         next: { revalidate: 0 }
@@ -41,8 +49,9 @@ async function scrapeMenu(url: string): Promise<string> {
       console.log('Scrape.do response received, status:', response.status)
     } catch (err: any) {
       clearTimeout(timeout)
+      console.error('Scrape.do fetch error:', err.name, err.message)
       if (err.name === 'AbortError') {
-        throw new Error('Scrape.do request timed out after 10 seconds')
+        throw new Error('Scrape.do request timed out after 15 seconds')
       }
       throw new Error(`Scrape.do error: ${err.message}`)
     }
