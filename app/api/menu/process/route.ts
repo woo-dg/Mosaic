@@ -113,6 +113,18 @@ export async function POST(request: NextRequest) {
     
     const supabase = createServerClient()
     
+    // Type definition for menu source
+    type MenuSource = {
+      id: string
+      restaurant_id: string
+      source_type: string
+      source_url: string | null
+      file_path: string | null
+      status: string
+      scraped_at: string | null
+      created_at: string
+    }
+    
     // Get menu source
     const { data: menuSource, error: menuSourceError } = await supabase
       .from('menu_sources')
@@ -128,19 +140,8 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Type guard for menu source
-    type MenuSource = {
-      id: string
-      restaurant_id: string
-      source_type: string
-      source_url: string | null
-      file_path: string | null
-      status: string
-      scraped_at: string | null
-      created_at: string
-    }
-    
-    const menuSourceData = menuSource as MenuSource
+    // Type assertion
+    const menuSourceData = menuSource as unknown as MenuSource
     
     if (menuSourceData.source_type !== 'url' || !menuSourceData.source_url) {
       return NextResponse.json(
