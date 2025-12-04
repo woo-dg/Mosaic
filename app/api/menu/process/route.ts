@@ -28,8 +28,6 @@ async function scrapeMenu(url: string): Promise<string> {
         'User-Agent': 'Mozilla/5.0 (compatible; MenuScraper/1.0)',
         'Accept': 'text/html'
       },
-      // @ts-ignore
-      cache: 'no-store',
       // @ts-ignore - Next.js fetch options
       next: { revalidate: 0 }
     }).then(async (res) => {
@@ -63,10 +61,13 @@ async function scrapeMenu(url: string): Promise<string> {
     const html = await Promise.race([response.text(), htmlTimeout])
     console.log('Menu HTML length:', html.length)
     
+    console.log('Loading HTML into cheerio...')
     const $ = cheerio.load(html)
+    console.log('Cheerio loaded successfully')
     
-    // Remove script and style elements
+    console.log('Removing scripts, styles, nav, header, footer...')
     $('script, style, nav, header, footer').remove()
+    console.log('Removed unwanted elements')
     
     // Try to find menu content - common selectors
     let menuText = ''
@@ -83,20 +84,25 @@ async function scrapeMenu(url: string): Promise<string> {
       '#content'
     ]
     
+    console.log('Searching for menu content with selectors...')
     for (const selector of menuSelectors) {
       const content = $(selector).text()
       if (content.length > 200) { // Found substantial content
         menuText = content
+        console.log(`Found menu content with selector: ${selector}, length: ${content.length}`)
         break
       }
     }
     
     // If no specific menu section found, get body text
     if (!menuText || menuText.length < 200) {
+      console.log('No menu found with selectors, using body text...')
       menuText = $('body').text()
+      console.log('Body text length:', menuText.length)
     }
     
     // Clean up the text
+    console.log('Cleaning menu text...')
     const cleanedText = menuText
       .replace(/\s+/g, ' ')
       .replace(/\n+/g, '\n')
@@ -104,6 +110,7 @@ async function scrapeMenu(url: string): Promise<string> {
       .substring(0, 10000) // Limit to 10k chars
     
     console.log('Menu content extracted, length:', cleanedText.length)
+    console.log('Menu content preview:', cleanedText.substring(0, 200))
     
     return cleanedText
   } catch (error: any) {

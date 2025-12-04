@@ -273,6 +273,11 @@ export default function RestaurantDashboardPage() {
       setMenuStatus('processing')
       setMenuUrlSaved(true)
       
+      // Reload menu URL after a short delay to get the updated URL from server
+      setTimeout(() => {
+        loadMenuUrl(false)
+      }, 1000)
+      
       // Clear saved state after 5 seconds
       setTimeout(() => {
         setMenuUrlSaved(false)
