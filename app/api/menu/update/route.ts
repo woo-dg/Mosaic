@@ -237,6 +237,7 @@ async function processMenuAsync(
 ) {
   try {
     console.log('=== STARTING MENU PROCESSING ===')
+    console.log('Timestamp:', new Date().toISOString())
     console.log('URL:', menuUrl)
     console.log('Restaurant ID:', restaurantId)
     console.log('Menu Source ID:', menuSourceId)
@@ -282,6 +283,10 @@ async function processMenuAsync(
       
       if (upsertError) {
         console.error('Error saving menu item:', item.name, upsertError)
+        // If it's a quota/rate limit error, throw to stop processing
+        if (upsertError.message?.includes('quota') || upsertError.message?.includes('limit') || upsertError.code === 'PGRST301') {
+          throw new Error(`Database quota exceeded: ${upsertError.message}. Please upgrade your Supabase plan.`)
+        }
       } else {
         savedCount++
         console.log('Saved menu item:', item.name)
@@ -301,28 +306,43 @@ async function processMenuAsync(
     
     if (updateError) {
       console.error('Failed to update status to completed:', updateError)
-      // Try to update to failed instead
-      await (supabase
-        .from('menu_sources') as any)
-        .update({ status: 'failed' })
-        .eq('id', menuSourceId)
-      throw new Error(`Database update failed: ${updateError.message}. This may be due to Supabase quota limits.`)
+      console.error('Update error details:', JSON.stringify(updateError, null, 2))
+      // Try to update to failed instead (but don't throw if this also fails due to quota)
+      try {
+        await (supabase
+          .from('menu_sources') as any)
+          .update({ status: 'failed' })
+          .eq('id', menuSourceId)
+      } catch (statusUpdateError) {
+        console.error('Failed to update status to failed:', statusUpdateError)
+      }
+      throw new Error(`Database update failed: ${updateError.message || 'Unknown error'}. This may be due to Supabase quota limits (you're at 170% egress).`)
     }
     
     console.log('=== MENU PROCESSING COMPLETED ===')
   } catch (error: any) {
     console.error('=== MENU PROCESSING FAILED ===')
-    console.error('Error:', error.message)
-    console.error('Stack:', error.stack)
+    console.error('Error message:', error.message)
+    console.error('Error stack:', error.stack)
+    console.error('Error name:', error.name)
+    console.error('Full error:', JSON.stringify(error, Object.getOwnPropertyNames(error)))
     
     // Try to update status to failed, but don't throw if this also fails
     try {
-      await (supabase
+      const { error: statusError } = await (supabase
         .from('menu_sources') as any)
         .update({ status: 'failed' })
         .eq('id', menuSourceId)
-    } catch (statusError) {
-      console.error('Failed to update status to failed:', statusError)
+      
+      if (statusError) {
+        console.error('Failed to update status to failed:', statusError)
+        console.error('Status update error details:', JSON.stringify(statusError, null, 2))
+      } else {
+        console.log('Status updated to failed successfully')
+      }
+    } catch (statusError: any) {
+      console.error('Exception updating status to failed:', statusError)
+      console.error('Exception details:', JSON.stringify(statusError, Object.getOwnPropertyNames(statusError)))
     }
   }
 }
