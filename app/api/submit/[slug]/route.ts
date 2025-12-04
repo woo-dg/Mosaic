@@ -250,7 +250,7 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      submissionId: submission.id,
+      submissionId: submissionId,
     }, {
       headers: { 'Content-Type': 'application/json' }
     })
