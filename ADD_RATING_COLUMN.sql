@@ -1,4 +1,6 @@
--- Add rating column to submissions table
+-- Run this SQL in your Supabase SQL Editor to add the rating column
+-- Go to: Supabase Dashboard > SQL Editor > New Query > Paste this > Run
+
 ALTER TABLE public.submissions 
 ADD COLUMN IF NOT EXISTS rating INTEGER;
 

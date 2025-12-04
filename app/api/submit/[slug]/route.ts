@@ -146,19 +146,41 @@ export async function POST(
 
     // Create submission
     const submissionId = uuidv4()
-    const { data: submission, error: submissionError } = await supabase
+    
+    // Try to insert with rating first, fallback to without rating if column doesn't exist
+    let submissionData: any = {
+      id: submissionId,
+      restaurant_id: restaurantData.id,
+      feedback: feedback?.trim() || null,
+      instagram_handle: instagramHandle?.trim() || null,
+      allow_marketing: allowMarketing,
+      agreed_private: true,
+    }
+    
+    // Add rating if provided
+    if (rating !== null && rating !== undefined) {
+      submissionData.rating = rating
+    }
+    
+    let { data: submission, error: submissionError } = await supabase
       .from('submissions')
-      .insert({
-        id: submissionId,
-        restaurant_id: restaurantData.id,
-        feedback: feedback?.trim() || null,
-        instagram_handle: instagramHandle?.trim() || null,
-        rating: rating,
-        allow_marketing: allowMarketing,
-        agreed_private: true,
-      } as any)
+      .insert(submissionData as any)
       .select()
       .single()
+
+    // If error is about rating column, try without it
+    if (submissionError && (submissionError.message?.includes('rating') || submissionError.message?.includes('column'))) {
+      console.warn('Rating column not found, creating submission without rating')
+      const { rating: _, ...submissionDataWithoutRating } = submissionData
+      const retryResult = await supabase
+        .from('submissions')
+        .insert(submissionDataWithoutRating as any)
+        .select()
+        .single()
+      
+      submission = retryResult.data
+      submissionError = retryResult.error
+    }
 
     if (submissionError || !submission) {
       return NextResponse.json(
