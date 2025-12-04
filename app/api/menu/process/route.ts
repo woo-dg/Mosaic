@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
     // Update status to processing
     await supabase
       .from('menu_sources')
-      .update({ status: 'processing' })
+      .update({ status: 'processing' } as any)
       .eq('id', menuSourceId)
     
     try {
@@ -194,7 +194,7 @@ export async function POST(request: NextRequest) {
         .update({ 
           status: 'completed', 
           scraped_at: new Date().toISOString() 
-        })
+        } as any)
         .eq('id', menuSourceId)
       
       return NextResponse.json({ 
@@ -207,7 +207,7 @@ export async function POST(request: NextRequest) {
       // Update status to failed
       await supabase
         .from('menu_sources')
-        .update({ status: 'failed' })
+        .update({ status: 'failed' } as any)
         .eq('id', menuSourceId)
       
       return NextResponse.json(
