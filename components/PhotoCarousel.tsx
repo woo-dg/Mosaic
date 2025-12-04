@@ -152,41 +152,27 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
       )
       .subscribe()
     
-    // More aggressive polling for faster updates (every 1 second for first 30 seconds, then every 2 seconds)
-    let pollCount = 0
-    const pollInterval = setInterval(() => {
-      loadPhotos()
-      pollCount++
-    }, 1000)
+    // DON'T poll when there are no photos - this causes flickering
+    // Only use realtime subscription for updates
     
-    // After 30 seconds, switch to slower polling
-    const slowPollTimeout = setTimeout(() => {
-      clearInterval(pollInterval)
-      const slowPollInterval = setInterval(() => {
-        loadPhotos()
-      }, 2000)
-      // Store for cleanup
-      return () => clearInterval(slowPollInterval)
-    }, 30000)
-    
-    // Refresh when page becomes visible
+    // Refresh when page becomes visible (only if we have photos)
     const handleVisibilityChange = () => {
-      if (!document.hidden) {
+      if (!document.hidden && photos.length > 0) {
         loadPhotos()
       }
     }
     document.addEventListener('visibilitychange', handleVisibilityChange)
     
-    // Refresh on window focus
+    // Refresh on window focus (only if we have photos)
     const handleFocus = () => {
-      loadPhotos()
+      if (photos.length > 0) {
+        loadPhotos()
+      }
     }
     window.addEventListener('focus', handleFocus)
     
     return () => {
       supabase.removeChannel(channel)
-      clearInterval(pollInterval)
-      clearTimeout(slowPollTimeout)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('focus', handleFocus)
       if (autoAdvanceTimerRef.current) {
@@ -194,6 +180,23 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
       }
     }
   }, [restaurantSlug, loadPhotos])
+  
+  // Only poll when photos exist - prevents flickering when empty
+  useEffect(() => {
+    if (photos.length === 0) {
+      // No photos - don't poll, just rely on realtime subscription
+      return
+    }
+    
+    // We have photos - start polling for updates (every 2 seconds)
+    const pollInterval = setInterval(() => {
+      loadPhotos()
+    }, 2000)
+    
+    return () => {
+      clearInterval(pollInterval)
+    }
+  }, [photos.length, loadPhotos])
 
   const goToNext = useCallback(() => {
     if (photos.length === 0 || isTransitioning) return
@@ -311,8 +314,8 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
     if (photos[prevPrevIndex]) preloadImage(photos[prevPrevIndex])
   }, [currentIndex, photos, restaurantSlug, imageUrls, mounted])
 
-  // Show loading state (same on server and client to prevent hydration mismatch)
-  if (!mounted || (loading && photos.length === 0)) {
+  // Show loading state only on initial mount (before first load completes)
+  if (!mounted) {
     return (
       <div className="mb-6">
         <div className="flex items-center justify-center h-[500px] sm:h-[600px] bg-gray-50 rounded-2xl mx-4">
@@ -322,7 +325,7 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
     )
   }
 
-  // Show empty state
+  // Show empty state (once mounted and no photos, show empty state - no polling when empty)
   if (photos.length === 0) {
     return (
       <div className="mb-6 px-4">
