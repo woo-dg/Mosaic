@@ -128,7 +128,21 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    if (menuSource.source_type !== 'url' || !menuSource.source_url) {
+    // Type guard for menu source
+    type MenuSource = {
+      id: string
+      restaurant_id: string
+      source_type: string
+      source_url: string | null
+      file_path: string | null
+      status: string
+      scraped_at: string | null
+      created_at: string
+    }
+    
+    const menuSourceData = menuSource as MenuSource
+    
+    if (menuSourceData.source_type !== 'url' || !menuSourceData.source_url) {
       return NextResponse.json(
         { error: 'Invalid menu source type' },
         { status: 400 }
@@ -143,7 +157,7 @@ export async function POST(request: NextRequest) {
     
     try {
       // Scrape menu content
-      const menuContent = await scrapeMenu(menuSource.source_url)
+      const menuContent = await scrapeMenu(menuSourceData.source_url)
       
       if (!menuContent || menuContent.length < 50) {
         throw new Error('Failed to extract menu content from URL')
