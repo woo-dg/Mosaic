@@ -15,52 +15,53 @@ async function scrapeMenu(url: string): Promise<string> {
   try {
     console.log('Fetching menu URL:', url)
     
-    // Add timeout to fetch (5 seconds max - Vercel Hobby has 10s limit)
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => {
-      console.log('Timeout triggered, aborting fetch after 5 seconds...')
-      controller.abort()
-    }, 5000) // 5 second timeout - must complete before Vercel kills function
+    // Use Promise.race with a timeout promise for reliable timeout handling
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        console.log('Fetch timeout after 4 seconds')
+        reject(new Error('FETCH_TIMEOUT'))
+      }, 4000)
+    })
+    
+    const fetchPromise = fetch(url, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; MenuScraper/1.0)',
+        'Accept': 'text/html'
+      },
+      // @ts-ignore
+      cache: 'no-store',
+      // @ts-ignore - Next.js fetch options
+      next: { revalidate: 0 }
+    }).then(async (res) => {
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${res.statusText}`)
+      }
+      return res
+    })
     
     let response: Response
     try {
-      console.log('Starting fetch request...')
-      response = await fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-          'Accept-Language': 'en-US,en;q=0.9',
-          'Accept-Encoding': 'gzip, deflate, br',
-          'Connection': 'keep-alive',
-          'Upgrade-Insecure-Requests': '1',
-          'Sec-Fetch-Dest': 'document',
-          'Sec-Fetch-Mode': 'navigate',
-          'Sec-Fetch-Site': 'none'
-        },
-        signal: controller.signal,
-        redirect: 'follow',
-        // @ts-ignore
-        cache: 'no-store'
-      })
-      clearTimeout(timeoutId)
+      console.log('Starting fetch with 4s timeout...')
+      response = await Promise.race([fetchPromise, timeoutPromise])
       console.log('Fetch completed, status:', response.status)
     } catch (fetchError: any) {
-      clearTimeout(timeoutId)
-      console.error('Fetch error caught:', fetchError.name, fetchError.message)
-      if (fetchError.name === 'AbortError' || fetchError.message?.includes('aborted')) {
-        throw new Error('Menu fetch timed out after 5 seconds - website may be slow or blocking requests')
+      console.error('Fetch failed:', fetchError.message)
+      if (fetchError.message === 'FETCH_TIMEOUT') {
+        throw new Error('Menu website is too slow or blocking server requests. Please try a different menu URL or contact support for manual menu entry.')
       }
-      throw new Error(`Failed to fetch menu: ${fetchError.message || fetchError}`)
+      throw fetchError
     }
     
-    console.log('Menu fetch response status:', response.status)
+    console.log('Reading menu HTML with 3s timeout...')
+    const htmlTimeout = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        console.log('HTML read timeout after 3 seconds')
+        reject(new Error('HTML_READ_TIMEOUT'))
+      }, 3000)
+    })
     
-    if (!response.ok) {
-      throw new Error(`Failed to fetch menu: ${response.status} ${response.statusText}`)
-    }
-    
-    console.log('Reading menu HTML...')
-    const html = await response.text()
+    const html = await Promise.race([response.text(), htmlTimeout])
     console.log('Menu HTML length:', html.length)
     
     const $ = cheerio.load(html)
