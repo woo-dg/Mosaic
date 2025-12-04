@@ -101,24 +101,24 @@ export async function POST(request: NextRequest) {
 
     // If menu URL provided, create menu source and trigger processing
     if (menuUrl && menuUrl.trim()) {
-      const { data: menuSource, error: menuSourceError } = await supabase
-        .from('menu_sources')
+      const menuSourceResult = await (supabase
+        .from('menu_sources') as any)
         .insert({
           restaurant_id: restaurantData.id,
           source_type: 'url',
           source_url: menuUrl.trim(),
           status: 'pending',
-        } as any)
+        })
         .select()
         .single()
 
-      if (!menuSourceError && menuSource) {
+      if (!menuSourceResult.error && menuSourceResult.data) {
         // Trigger async menu processing (don't wait for it)
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.headers.get('origin') || 'http://localhost:3000'
         fetch(`${baseUrl}/api/menu/process`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ restaurantId: restaurantData.id, menuSourceId: menuSource.id })
+          body: JSON.stringify({ restaurantId: restaurantData.id, menuSourceId: menuSourceResult.data.id })
         }).catch(err => console.error('Failed to trigger menu processing:', err))
       }
     }

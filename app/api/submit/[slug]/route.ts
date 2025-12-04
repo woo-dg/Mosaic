@@ -248,11 +248,12 @@ export async function POST(
       }
 
       // Get signed URL for classification (async, don't wait)
-      const { data: signedUrlData } = await supabase.storage
+      const signedUrlResult = await supabase.storage
         .from('submissions')
         .createSignedUrl(filePath, 3600) // 1 hour expiry
 
-      if (signedUrlData?.signedUrl && photoData.id) {
+      const photoId = (photoData as any).id
+      if (signedUrlResult.data?.signedUrl && photoId) {
         // Trigger async classification (don't wait for it)
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
                        request.headers.get('origin') || 
@@ -262,9 +263,9 @@ export async function POST(
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            photoId: photoData.id,
+            photoId: photoId,
             restaurantId: restaurantData.id,
-            imageUrl: signedUrlData.signedUrl
+            imageUrl: signedUrlResult.data.signedUrl
           })
         }).catch(err => console.error('Failed to trigger photo classification:', err))
       }

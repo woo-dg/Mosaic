@@ -23,18 +23,26 @@ export async function POST(request: NextRequest) {
     const supabase = createServerClient()
     
     // Get menu items for this restaurant
-    const { data: menuItems, error: menuItemsError } = await supabase
-      .from('menu_items')
+    const menuItemsResult = await (supabase
+      .from('menu_items') as any)
       .select('*')
       .eq('restaurant_id', restaurantId)
     
-    if (menuItemsError || !menuItems || menuItems.length === 0) {
+    if (menuItemsResult.error || !menuItemsResult.data || menuItemsResult.data.length === 0) {
       // No menu items, skip classification
       return NextResponse.json({ 
         menuItemId: null,
         reason: 'no_menu_items'
       })
     }
+    
+    const menuItems = menuItemsResult.data as Array<{
+      id: string
+      name: string
+      category: string | null
+      description: string | null
+      price: string | null
+    }>
     
     // STEP 1: Check if image contains food (using cheaper model)
     const foodDetection = await openai.chat.completions.create({
@@ -126,8 +134,8 @@ If the dish doesn't match any menu item, return null.`
     
     if (matchedItem) {
       // Update photo with menu_item_id
-      const { error: updateError } = await supabase
-        .from('photos')
+      const { error: updateError } = await (supabase
+        .from('photos') as any)
         .update({ menu_item_id: matchedItem.id })
         .eq('id', photoId)
       
