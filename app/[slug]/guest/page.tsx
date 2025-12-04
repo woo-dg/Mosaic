@@ -84,6 +84,11 @@ export default function GuestPage() {
       setCarouselKey(prev => prev + 1)
     }, 1200)
     
+    // Refresh again after classification might have completed (5 seconds)
+    setTimeout(() => {
+      setCarouselKey(prev => prev + 1)
+    }, 5000)
+    
     // Hide loading state after photo should be loaded
     setTimeout(() => {
       setIsLoadingNewPhoto(false)

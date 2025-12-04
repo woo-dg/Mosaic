@@ -29,6 +29,10 @@ export default function RestaurantDashboardPage() {
   const [authorized, setAuthorized] = useState<boolean | null>(null)
   const [filterMarketing, setFilterMarketing] = useState(false)
   const [filterDays, setFilterDays] = useState<number | null>(null)
+  const [menuUrl, setMenuUrl] = useState<string>('')
+  const [menuUrlLoading, setMenuUrlLoading] = useState(true)
+  const [menuUrlSaving, setMenuUrlSaving] = useState(false)
+  const [menuStatus, setMenuStatus] = useState<string>('')
 
   useEffect(() => {
     if (!isLoaded) return
@@ -43,6 +47,7 @@ export default function RestaurantDashboardPage() {
   useEffect(() => {
     if (authorized === true) {
       loadSubmissions()
+      loadMenuUrl()
     }
   }, [authorized, filterMarketing, filterDays])
 
@@ -152,6 +157,98 @@ export default function RestaurantDashboardPage() {
     }
   }
 
+  const loadMenuUrl = async () => {
+    if (!user || !authorized) return
+
+    setMenuUrlLoading(true)
+    try {
+      const token = await getToken()
+      const supabase = await createAuthenticatedClient(token)
+      
+      // Get restaurant ID
+      const { data: restaurant } = await supabase
+        .from('restaurants')
+        .select('id')
+        .eq('slug', slug)
+        .single()
+
+      if (!restaurant) return
+
+      const restaurantData = restaurant as { id: string }
+
+      // Get most recent menu source
+      const { data: menuSource } = await (supabase
+        .from('menu_sources') as any)
+        .select('source_url, status')
+        .eq('restaurant_id', restaurantData.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      if (menuSource) {
+        setMenuUrl(menuSource.source_url || '')
+        setMenuStatus(menuSource.status || '')
+      }
+    } catch (error) {
+      // No menu source exists yet, that's okay
+      console.log('No menu source found')
+    } finally {
+      setMenuUrlLoading(false)
+    }
+  }
+
+  const handleSaveMenuUrl = async () => {
+    if (!user || !authorized || !menuUrl.trim()) return
+
+    setMenuUrlSaving(true)
+    try {
+      const token = await getToken()
+      const supabase = await createAuthenticatedClient(token)
+      
+      // Get restaurant ID
+      const { data: restaurant } = await supabase
+        .from('restaurants')
+        .select('id')
+        .eq('slug', slug)
+        .single()
+
+      if (!restaurant) return
+
+      const restaurantData = restaurant as { id: string }
+
+      const response = await fetch('/api/menu/update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          restaurantId: restaurantData.id,
+          menuUrl: menuUrl.trim()
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        alert(data.error || 'Failed to save menu URL')
+        return
+      }
+
+      setMenuStatus('pending')
+      alert('Menu URL saved! Processing will start shortly.')
+      
+      // Reload menu URL to get updated status
+      setTimeout(() => {
+        loadMenuUrl()
+      }, 2000)
+    } catch (error) {
+      console.error('Error saving menu URL:', error)
+      alert('Failed to save menu URL')
+    } finally {
+      setMenuUrlSaving(false)
+    }
+  }
+
   if (!isLoaded || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -198,6 +295,53 @@ export default function RestaurantDashboardPage() {
       </nav>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Menu URL Section */}
+        <div className="mb-8 bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold mb-4">Menu Settings</h3>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <label htmlFor="menuUrl" className="block text-sm font-medium text-gray-700 mb-2">
+                Menu URL
+              </label>
+              <input
+                id="menuUrl"
+                type="url"
+                value={menuUrl}
+                onChange={(e) => setMenuUrl(e.target.value)}
+                placeholder="https://yourrestaurant.com/menu"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                disabled={menuUrlLoading || menuUrlSaving}
+              />
+              {menuStatus && (
+                <p className="mt-2 text-xs text-gray-500">
+                  Status: <span className="font-medium capitalize">{menuStatus}</span>
+                  {menuStatus === 'completed' && (
+                    <span className="ml-2 text-green-600">✓ Menu items extracted</span>
+                  )}
+                  {menuStatus === 'processing' && (
+                    <span className="ml-2 text-blue-600">⏳ Processing menu...</span>
+                  )}
+                  {menuStatus === 'failed' && (
+                    <span className="ml-2 text-red-600">✗ Processing failed</span>
+                  )}
+                </p>
+              )}
+              <p className="mt-1 text-xs text-gray-500">
+                We'll automatically extract menu items from your website
+              </p>
+            </div>
+            <div className="flex items-end">
+              <button
+                onClick={handleSaveMenuUrl}
+                disabled={menuUrlSaving || !menuUrl.trim() || menuUrlLoading}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition whitespace-nowrap"
+              >
+                {menuUrlSaving ? 'Saving...' : 'Save & Process'}
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
           <h2 className="text-2xl font-bold">Submissions</h2>
           
