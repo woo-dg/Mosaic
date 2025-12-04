@@ -126,8 +126,8 @@ export async function POST(request: NextRequest) {
     }
     
     // Get menu source
-    const menuSourceResult = await supabase
-      .from('menu_sources')
+    const menuSourceResult = await (supabase
+      .from('menu_sources') as any)
       .select('*')
       .eq('id', menuSourceId)
       .eq('restaurant_id', restaurantId)
@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Type assertion
-    const menuSourceData = menuSourceResult.data as unknown as MenuSource
+    const menuSourceData = menuSourceResult.data as MenuSource
     
     if (menuSourceData.source_type !== 'url' || !menuSourceData.source_url) {
       return NextResponse.json(
