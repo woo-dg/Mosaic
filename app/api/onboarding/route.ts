@@ -113,13 +113,44 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (!menuSourceResult.error && menuSourceResult.data) {
+        const menuSourceId = (menuSourceResult.data as any).id
+        console.log('Menu source created:', { restaurantId: restaurantData.id, menuSourceId, menuUrl: menuUrl.trim() })
+        
         // Trigger async menu processing (don't wait for it)
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.headers.get('origin') || 'http://localhost:3000'
-        fetch(`${baseUrl}/api/menu/process`, {
+        // Use absolute URL to ensure it works in production
+        const origin = request.headers.get('origin') || request.headers.get('host')
+        const protocol = request.headers.get('x-forwarded-proto') || 'https'
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
+                       (origin ? `${protocol}://${origin}` : 'http://localhost:3000')
+        const processUrl = `${baseUrl}/api/menu/process`
+        console.log('Triggering menu processing:', processUrl, { restaurantId: restaurantData.id, menuSourceId })
+        
+        // Don't await - fire and forget, but log errors
+        fetch(processUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ restaurantId: restaurantData.id, menuSourceId: menuSourceResult.data.id })
-        }).catch(err => console.error('Failed to trigger menu processing:', err))
+          headers: { 
+            'Content-Type': 'application/json',
+            // Forward auth if needed
+            ...(request.headers.get('authorization') && { 
+              'authorization': request.headers.get('authorization')! 
+            })
+          },
+          body: JSON.stringify({ restaurantId: restaurantData.id, menuSourceId })
+        })
+        .then(async (response) => {
+          if (!response.ok) {
+            const text = await response.text()
+            console.error('Menu processing failed:', response.status, text.substring(0, 500))
+          } else {
+            const result = await response.json()
+            console.log('Menu processing started successfully:', result)
+          }
+        })
+        .catch(err => {
+          console.error('Failed to trigger menu processing:', err.message || err)
+        })
+      } else {
+        console.error('Failed to create menu source:', menuSourceResult.error)
       }
     }
 

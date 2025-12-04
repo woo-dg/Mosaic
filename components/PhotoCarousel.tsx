@@ -451,7 +451,7 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
               )}
               {/* Rating overlay - shown when zoomed */}
               {isZoomed && currentPhoto?.rating !== null && currentPhoto?.rating !== undefined && (
-                <div className="absolute top-4 right-4 bg-black/80 backdrop-blur-sm rounded-xl p-3 z-40">
+                <div className="absolute top-4 right-4 bg-black/80 backdrop-blur-sm rounded-xl p-2.5 z-40">
                   <div className="flex items-center gap-1">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <span
@@ -465,16 +465,13 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
                         ★
                       </span>
                     ))}
-                    <span className="text-white text-xs sm:text-sm ml-1">
-                      {currentPhoto.rating}/5
-                    </span>
                   </div>
                 </div>
               )}
               {/* Feedback overlay - shown when zoomed */}
               {isZoomed && currentPhoto?.feedback && (
-                <div className="absolute top-16 right-4 bg-black/80 backdrop-blur-sm rounded-xl p-4 max-w-[200px] sm:max-w-[250px] z-40">
-                  <p className="text-white text-sm sm:text-base leading-relaxed">
+                <div className="absolute top-20 right-4 bg-black/80 backdrop-blur-sm rounded-lg p-2.5 max-w-[160px] sm:max-w-[200px] z-40">
+                  <p className="text-white text-xs sm:text-sm leading-relaxed">
                     {currentPhoto.feedback}
                   </p>
                 </div>

@@ -104,7 +104,10 @@ export async function POST(request: NextRequest) {
   try {
     const { restaurantId, menuSourceId } = await request.json()
     
+    console.log('Menu processing started:', { restaurantId, menuSourceId })
+    
     if (!restaurantId || !menuSourceId) {
+      console.error('Missing required fields:', { restaurantId, menuSourceId })
       return NextResponse.json(
         { error: 'Missing restaurantId or menuSourceId' },
         { status: 400 }
@@ -134,6 +137,7 @@ export async function POST(request: NextRequest) {
       .single()
     
     if (menuSourceResult.error || !menuSourceResult.data) {
+      console.error('Menu source not found:', menuSourceResult.error)
       return NextResponse.json(
         { error: 'Menu source not found' },
         { status: 404 }
@@ -142,8 +146,10 @@ export async function POST(request: NextRequest) {
     
     // Type assertion
     const menuSourceData = menuSourceResult.data as MenuSource
+    console.log('Menu source found:', { url: menuSourceData.source_url, status: menuSourceData.status })
     
     if (menuSourceData.source_type !== 'url' || !menuSourceData.source_url) {
+      console.error('Invalid menu source:', menuSourceData)
       return NextResponse.json(
         { error: 'Invalid menu source type' },
         { status: 400 }
@@ -156,37 +162,55 @@ export async function POST(request: NextRequest) {
       .update({ status: 'processing' })
       .eq('id', menuSourceId)
     
+    console.log('Starting menu scraping for:', menuSourceData.source_url)
+    
     try {
       // Scrape menu content
       const menuContent = await scrapeMenu(menuSourceData.source_url)
+      console.log('Menu content scraped, length:', menuContent.length)
       
       if (!menuContent || menuContent.length < 50) {
+        console.error('Menu content too short:', menuContent.length)
         throw new Error('Failed to extract menu content from URL')
       }
       
       // Use LLM to extract menu items
+      console.log('Extracting menu items with LLM...')
       const menuItems = await extractMenuItems(menuContent)
+      console.log('Menu items extracted:', menuItems.length)
       
       if (menuItems.length === 0) {
+        console.error('No menu items extracted from content')
         throw new Error('No menu items extracted')
       }
       
       // Save menu items (use upsert to avoid duplicates)
+      console.log('Saving menu items to database...')
       const insertPromises = menuItems.map((item: any) => {
-        if (!item.name || item.name.trim().length === 0) return null
+        if (!item.name || item.name.trim().length === 0) {
+          console.warn('Skipping item with no name:', item)
+          return null
+        }
         
-        return supabase.from('menu_items').upsert({
+        console.log('Saving menu item:', item.name)
+        return (supabase.from('menu_items') as any).upsert({
           restaurant_id: restaurantId,
           name: item.name.trim(),
           category: item.category?.trim() || null,
           description: item.description?.trim() || null,
           price: item.price?.trim() || null,
-        } as any, {
+        }, {
           onConflict: 'restaurant_id,name'
         })
       })
       
-      await Promise.all(insertPromises.filter(p => p !== null))
+      const results = await Promise.all(insertPromises.filter(p => p !== null))
+      const errors = results.filter(r => r?.error).map(r => r.error)
+      if (errors.length > 0) {
+        console.error('Errors saving menu items:', errors)
+      } else {
+        console.log('All menu items saved successfully')
+      }
       
       // Update status to completed
       await (supabase
