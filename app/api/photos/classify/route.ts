@@ -190,14 +190,26 @@ Return the FULL menu item name (e.g., "Fried Calamari" not just "Calamari"). If 
         
         // Check if any significant word from identified matches any word in menu item
         const hasMatchingWord = identifiedWords.some((idWord: string) => 
-          itemWords.some((itemWord: string) => 
-            itemWord === idWord || 
-            itemWord.includes(idWord) || 
-            idWord.includes(itemWord) ||
-            // Handle plurals/singulars (basic)
-            (itemWord.endsWith('s') && itemWord.slice(0, -1) === idWord) ||
-            (idWord.endsWith('s') && idWord.slice(0, -1) === itemWord)
-          )
+          itemWords.some((itemWord: string) => {
+            // Exact match
+            if (itemWord === idWord) return true
+            // Contains match
+            if (itemWord.includes(idWord) || idWord.includes(itemWord)) return true
+            // Handle plurals/singulars
+            if ((itemWord.endsWith('s') && itemWord.slice(0, -1) === idWord) ||
+                (idWord.endsWith('s') && idWord.slice(0, -1) === itemWord)) return true
+            // Similar spelling (for cases like "calamari" vs "kalamari") - check if 80% of chars match
+            const minLen = Math.min(itemWord.length, idWord.length)
+            const maxLen = Math.max(itemWord.length, idWord.length)
+            if (minLen >= 5 && maxLen <= minLen + 1) {
+              let matches = 0
+              for (let i = 0; i < minLen; i++) {
+                if (itemWord[i] === idWord[i]) matches++
+              }
+              if (matches / minLen >= 0.8) return true
+            }
+            return false
+          })
         )
         
         return hasMatchingWord

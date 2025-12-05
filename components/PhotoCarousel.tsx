@@ -361,6 +361,13 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
 
   const currentPhoto = photos[currentIndex]
   const currentImageUrl = currentPhoto ? imageUrls[currentPhoto.id] : null
+  
+  // Debug logging for menu items
+  if (currentPhoto?.menu_item) {
+    console.log('Current photo has menu item:', currentPhoto.menu_item)
+  } else if (currentPhoto) {
+    console.log('Current photo has no menu item:', currentPhoto.id)
+  }
 
   // Get previous and next photos for side display
   const prevIndex = (currentIndex - 1 + photos.length) % photos.length

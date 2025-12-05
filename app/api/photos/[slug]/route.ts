@@ -52,7 +52,7 @@ export async function GET(
         feedback,
         rating,
         allow_marketing,
-        photos(id, file_path, menu_items(id, name, category))
+        photos(id, file_path, menu_item_id, menu_item:menu_items(id, name, category))
       `)
       .eq('restaurant_id', restaurantData.id)
       .or(`allow_marketing.eq.true,created_at.gte.${fiveMinutesAgo}`)
@@ -71,7 +71,7 @@ export async function GET(
             instagram_handle,
             feedback,
             allow_marketing,
-            photos(id, file_path, menu_items(id, name, category))
+            photos(id, file_path, menu_item_id, menu_item:menu_items(id, name, category))
           `)
           .eq('restaurant_id', restaurantData.id)
           .or(`allow_marketing.eq.true,created_at.gte.${fiveMinutesAgo}`)
@@ -92,15 +92,17 @@ export async function GET(
             return submission.allow_marketing === true || isRecent
           })
           .flatMap((submission: any) =>
-            (submission.photos || []).map((photo: any) => ({
-              id: photo.id,
-              file_path: photo.file_path,
-              created_at: submission.created_at,
-              instagram_handle: submission.instagram_handle || null,
-              feedback: submission.feedback || null,
-              rating: null,
-              menu_item: photo.menu_items || null,
-            }))
+            (submission.photos || []).map((photo: any) => {
+              return {
+                id: photo.id,
+                file_path: photo.file_path,
+                created_at: submission.created_at,
+                instagram_handle: submission.instagram_handle || null,
+                feedback: submission.feedback || null,
+                rating: null,
+                menu_item: photo.menu_item || null,
+              }
+            })
           )
         
         return NextResponse.json({ photos: photos || [] }, {
@@ -116,22 +118,59 @@ export async function GET(
 
     // Flatten photos with submission info
     // Include photos from submissions with allow_marketing = true OR recent submissions (last 5 minutes)
-    const photos = (submissions || [])
+    let photos = (submissions || [])
       .filter((submission: any) => {
         const isRecent = new Date(submission.created_at) >= new Date(fiveMinutesAgo)
         return submission.allow_marketing === true || isRecent
       })
       .flatMap((submission: any) =>
-        (submission.photos || []).map((photo: any) => ({
-          id: photo.id,
-          file_path: photo.file_path,
-          created_at: submission.created_at,
-          instagram_handle: submission.instagram_handle || null,
-          feedback: submission.feedback || null,
-          rating: submission.rating || null,
-          menu_item: photo.menu_items || null,
-        }))
+        (submission.photos || []).map((photo: any) => {
+          // Debug logging
+          if (photo.menu_item_id) {
+            console.log('Photo has menu_item_id:', photo.menu_item_id, 'menu_item:', photo.menu_item)
+          }
+          
+          return {
+            id: photo.id,
+            file_path: photo.file_path,
+            created_at: submission.created_at,
+            instagram_handle: submission.instagram_handle || null,
+            feedback: submission.feedback || null,
+            rating: submission.rating || null,
+            menu_item: photo.menu_item || null,
+            menu_item_id: photo.menu_item_id || null, // Keep menu_item_id for fallback
+          }
+        })
       )
+    
+    // Fallback: If any photos have menu_item_id but no menu_item, fetch them separately
+    const photosNeedingMenuItems = photos.filter((p: any) => p.menu_item_id && !p.menu_item)
+    if (photosNeedingMenuItems.length > 0) {
+      console.log(`Fetching menu items for ${photosNeedingMenuItems.length} photos`)
+      const menuItemIds = Array.from(new Set(photosNeedingMenuItems.map((p: any) => p.menu_item_id)))
+      const { data: menuItemsData } = await supabase
+        .from('menu_items')
+        .select('id, name, category')
+        .in('id', menuItemIds)
+      
+      if (menuItemsData) {
+        const menuItemsMap = new Map(menuItemsData.map((mi: any) => [mi.id, mi]))
+        photos = photos.map((photo: any) => {
+          if (photo.menu_item_id && !photo.menu_item && menuItemsMap.has(photo.menu_item_id)) {
+            photo.menu_item = menuItemsMap.get(photo.menu_item_id)
+          }
+          // Remove menu_item_id from final output
+          const { menu_item_id, ...rest } = photo
+          return rest
+        })
+      }
+    } else {
+      // Remove menu_item_id from final output
+      photos = photos.map((photo: any) => {
+        const { menu_item_id, ...rest } = photo
+        return rest
+      })
+    }
 
     return NextResponse.json({ photos: photos || [] }, {
       headers: { 'Content-Type': 'application/json' }
