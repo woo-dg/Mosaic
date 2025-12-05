@@ -126,7 +126,13 @@ Return ONLY a JSON object with this format:
   "menuItemName": "exact menu item name that matches" or null
 }
 
-Be flexible with matching - if the photo shows a burrito and there's a "Burrito" or "Chicken Burrito" on the menu, match it. If the dish doesn't match any menu item, return null.`
+IMPORTANT: Be very flexible with matching. Match based on the main food item, not exact wording:
+- If photo shows "calamari" and menu has "Fried Calamari" or "Calamari Rings" → match it
+- If photo shows "burrito" and menu has "Chicken Burrito" or "Steak Burrito" → match any burrito
+- If photo shows "tacos" and menu has "Al Pastor Tacos" or "Chicken Tacos" → match any taco
+- Match by the core food item name, even if modifiers differ
+
+Return the FULL menu item name (e.g., "Fried Calamari" not just "Calamari"). If the dish doesn't match any menu item, return null.`
             },
             {
               type: 'image_url',
@@ -161,39 +167,69 @@ Be flexible with matching - if the photo shows a burrito and there's a "Burrito"
     
     console.log('Looking for match for:', identifiedItemName)
     
-    // Find matching menu item (fuzzy match - more flexible)
-    const matchedItem = menuItems.find(item => {
-      const itemNameLower = item.name.toLowerCase()
-      const itemWords = itemNameLower.split(/\s+/)
-      const identifiedWords = identifiedItemName.split(/\s+/)
+    // First try exact match (AI might return the exact menu item name)
+    let matchedItem = menuItems.find(item => 
+      item.name.toLowerCase() === identifiedItemName
+    )
+    
+    if (matchedItem) {
+      console.log('Exact match found:', matchedItem.name)
+    } else {
+      // More flexible matching - check if menu item contains the identified name or vice versa
+      matchedItem = menuItems.find(item => {
+        const itemNameLower = item.name.toLowerCase()
+        
+        // Direct contains match (e.g., "fried calamari" contains "calamari")
+        if (itemNameLower.includes(identifiedItemName) || identifiedItemName.includes(itemNameLower)) {
+          return true
+        }
+        
+        // Word-based match - check if key food words match
+        const itemWords = itemNameLower.split(/\s+/).filter((w: string) => w.length > 3) // Filter out short words like "the", "and"
+        const identifiedWords = identifiedItemName.split(/\s+/).filter((w: string) => w.length > 3)
+        
+        // Check if any significant word from identified matches any word in menu item
+        const hasMatchingWord = identifiedWords.some((idWord: string) => 
+          itemWords.some((itemWord: string) => 
+            itemWord === idWord || 
+            itemWord.includes(idWord) || 
+            idWord.includes(itemWord) ||
+            // Handle plurals/singulars (basic)
+            (itemWord.endsWith('s') && itemWord.slice(0, -1) === idWord) ||
+            (idWord.endsWith('s') && idWord.slice(0, -1) === itemWord)
+          )
+        )
+        
+        return hasMatchingWord
+      })
       
-      // Exact match
-      if (itemNameLower === identifiedItemName) return true
-      
-      // Contains match
-      if (itemNameLower.includes(identifiedItemName) || identifiedItemName.includes(itemNameLower)) return true
-      
-      // Word-based match (e.g., "chicken burrito" matches "burrito")
-      const hasCommonWords = itemWords.some((word: string) => 
-        identifiedWords.some((idWord: string) => word === idWord || word.includes(idWord) || idWord.includes(word))
-      )
-      if (hasCommonWords && itemWords.length <= 3) return true
-      
-      return false
-    })
+      if (matchedItem) {
+        console.log('Flexible match found:', matchedItem.name)
+      }
+    }
     
     console.log('Matched item:', matchedItem?.name || 'none')
     
     if (matchedItem) {
+      console.log('Updating photo with menu item:', { photoId, menuItemId: matchedItem.id, menuItemName: matchedItem.name })
+      
       // Update photo with menu_item_id
-      const { error: updateError } = await (supabase
+      const { error: updateError, data: updateData } = await (supabase
         .from('photos') as any)
         .update({ menu_item_id: matchedItem.id })
         .eq('id', photoId)
+        .select()
       
       if (updateError) {
         console.error('Error updating photo with menu item:', updateError)
+        return NextResponse.json({ 
+          menuItemId: null,
+          reason: 'update_failed',
+          error: updateError.message
+        })
       }
+      
+      console.log('Photo updated successfully:', updateData)
       
       return NextResponse.json({ 
         menuItemId: matchedItem.id,

@@ -52,7 +52,7 @@ export async function GET(
         feedback,
         rating,
         allow_marketing,
-        photos(id, file_path, menu_item:menu_items(id, name, category))
+        photos(id, file_path, menu_items(id, name, category))
       `)
       .eq('restaurant_id', restaurantData.id)
       .or(`allow_marketing.eq.true,created_at.gte.${fiveMinutesAgo}`)
@@ -71,7 +71,7 @@ export async function GET(
             instagram_handle,
             feedback,
             allow_marketing,
-            photos(id, file_path, menu_item:menu_items(id, name, category))
+            photos(id, file_path, menu_items(id, name, category))
           `)
           .eq('restaurant_id', restaurantData.id)
           .or(`allow_marketing.eq.true,created_at.gte.${fiveMinutesAgo}`)
@@ -99,7 +99,7 @@ export async function GET(
               instagram_handle: submission.instagram_handle || null,
               feedback: submission.feedback || null,
               rating: null,
-              menu_item: photo.menu_item || null,
+              menu_item: photo.menu_items || null,
             }))
           )
         
@@ -129,7 +129,7 @@ export async function GET(
           instagram_handle: submission.instagram_handle || null,
           feedback: submission.feedback || null,
           rating: submission.rating || null,
-          menu_item: photo.menu_item || null,
+          menu_item: photo.menu_items || null,
         }))
       )
 

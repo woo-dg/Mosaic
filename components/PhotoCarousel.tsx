@@ -424,19 +424,12 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
                 priority
                 unoptimized
               />
-              {/* Menu item overlay - shown above image with elegant black text */}
+              {/* Menu item overlay - shown above image with simple black text */}
               {currentPhoto?.menu_item && (
-                <div className="absolute -top-12 left-1/2 -translate-x-1/2 z-30 w-full max-w-[280px] sm:max-w-[400px]">
-                  <div className="bg-white/95 backdrop-blur-sm rounded-lg px-4 py-2.5 shadow-lg border border-gray-200/50">
-                    <h3 className="text-black text-center text-lg sm:text-xl font-semibold tracking-tight" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-                      {currentPhoto.menu_item.name}
-                    </h3>
-                    {currentPhoto.menu_item.category && (
-                      <p className="text-gray-600 text-center text-xs sm:text-sm mt-0.5 uppercase tracking-wider">
-                        {currentPhoto.menu_item.category}
-                      </p>
-                    )}
-                  </div>
+                <div className="absolute -top-14 sm:-top-16 left-1/2 -translate-x-1/2 z-30 text-center">
+                  <h3 className="text-black text-xl sm:text-2xl font-semibold tracking-tight drop-shadow-[0_2px_4px_rgba(255,255,255,0.8)]" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+                    {currentPhoto.menu_item.name}
+                  </h3>
                 </div>
               )}
               {/* Instagram handle overlay - shown below menu item or at top if no menu item */}
