@@ -13,58 +13,58 @@ const openai = new OpenAI({
 
 async function scrapeMenu(url: string): Promise<string> {
   try {
-    console.log('Fetching menu URL via Scrape.do:', url)
+    console.log('Fetching menu URL directly:', url)
     
-    const apiKey = process.env.SCRAPE_DO_API_KEY || 'ff3db5e401b84545a6e90faa64ad6d0cdffdc773a52'
-    if (!apiKey) {
-      throw new Error('SCRAPE_DO_API_KEY not configured')
-    }
-    
-    // Use Scrape.do API to fetch the page with headless browser
-    // Format: https://api.scrape.do?token=TOKEN&url=URL
-    const scrapeUrl = `https://api.scrape.do?token=${apiKey}&url=${encodeURIComponent(url)}`
-    
-    console.log('Scrape.do API Key (first 10 chars):', apiKey.substring(0, 10) + '...')
-    console.log('Scrape.do URL (without token):', `https://api.scrape.do?token=***&url=${encodeURIComponent(url)}`)
-    console.log('Calling Scrape.do API...')
-    
+    // Direct fetch with browser-like headers
     const controller = new AbortController()
     const timeout = setTimeout(() => {
-      console.log('Scrape.do timeout after 15 seconds')
+      console.log('Fetch timeout after 12 seconds')
       controller.abort()
-    }, 15000) // 15 second timeout for Scrape.do (they need time to render)
+    }, 12000) // 12 second timeout
     
     let response: Response
     try {
-      console.log('Making fetch request to Scrape.do...')
-      response = await fetch(scrapeUrl, {
+      console.log('Making direct fetch request...')
+      response = await fetch(url, {
         method: 'GET',
         headers: {
-          'User-Agent': 'Mosaic-Menu-Scraper/1.0'
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Referer': url, // Use menu URL as referer to appear more legitimate
+          'Accept-Encoding': 'gzip, deflate, br',
+          'Connection': 'keep-alive',
+          'Upgrade-Insecure-Requests': '1'
         },
+        redirect: 'follow',
         signal: controller.signal,
         // @ts-ignore
         next: { revalidate: 0 }
       })
       clearTimeout(timeout)
-      console.log('Scrape.do response received, status:', response.status)
+      console.log('Fetch response received, status:', response.status)
     } catch (err: any) {
       clearTimeout(timeout)
-      console.error('Scrape.do fetch error:', err.name, err.message)
+      console.error('Fetch error:', err.name, err.message)
       if (err.name === 'AbortError') {
-        throw new Error('Scrape.do request timed out after 15 seconds')
+        throw new Error('Menu fetch timed out after 12 seconds - website may be slow or blocking requests')
       }
-      throw new Error(`Scrape.do error: ${err.message}`)
+      throw new Error(`Failed to fetch menu: ${err.message}`)
     }
     
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Unknown error')
-      throw new Error(`Scrape.do API error: ${response.status} ${response.statusText} - ${errorText.substring(0, 200)}`)
+      throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText.substring(0, 200)}`)
     }
     
-    console.log('Reading HTML from Scrape.do...')
+    console.log('Reading HTML...')
     const html = await response.text()
     console.log('Menu HTML length:', html.length)
+    
+    // Check if HTML is too short (likely JS-rendered or empty page)
+    if (html.length < 500) {
+      throw new Error('Page returned minimal content - may require JavaScript rendering or is inaccessible')
+    }
     
     console.log('Loading HTML into cheerio...')
     const $ = cheerio.load(html)
@@ -74,6 +74,7 @@ async function scrapeMenu(url: string): Promise<string> {
     $('script, style, nav, header, footer').remove()
     console.log('Removed unwanted elements')
     
+    // Try to find menu content - use .first() to get only the first matching container
     let menuText = ''
     const menuSelectors = [
       '[class*="menu"]',
@@ -88,26 +89,50 @@ async function scrapeMenu(url: string): Promise<string> {
     
     console.log('Searching for menu content with selectors...')
     for (const selector of menuSelectors) {
-      const content = $(selector).text()
-      if (content.length > 200) {
-        menuText = content
-        console.log(`Found menu content with selector: ${selector}, length: ${content.length}`)
-        break
+      const container = $(selector).first()
+      if (container.length) {
+        const content = container.text()
+        if (content.length > 200) {
+          menuText = content
+          console.log(`Found menu content with selector: ${selector}, length: ${content.length}`)
+          break
+        }
       }
     }
     
+    // Fallback to body text if no specific container found
     if (!menuText || menuText.length < 200) {
       console.log('No menu found with selectors, using body text...')
       menuText = $('body').text()
       console.log('Body text length:', menuText.length)
     }
     
+    if (!menuText || menuText.length < 200) {
+      throw new Error('Failed to extract sufficient menu content from page')
+    }
+    
     console.log('Cleaning menu text...')
-    const cleanedText = menuText
+    // Enhanced text cleaning - remove common non-menu content
+    let cleanedText = menuText
+      // Remove phone numbers
+      .replace(/\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g, '')
+      // Remove email addresses
+      .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, '')
+      // Remove common footer/header phrases
+      .replace(/\b(Contact us|Follow us|Hours|Address|Phone|Email|Instagram|Facebook|Twitter|©|Copyright|All rights reserved)\b/gi, '')
+      // Remove excessive whitespace
       .replace(/\s+/g, ' ')
       .replace(/\n+/g, '\n')
       .trim()
-      .substring(0, 10000)
+    
+    // Limit to 10,000 characters, try to cut at sentence boundary
+    if (cleanedText.length > 10000) {
+      const truncated = cleanedText.substring(0, 10000)
+      const lastPeriod = truncated.lastIndexOf('.')
+      const lastNewline = truncated.lastIndexOf('\n')
+      const cutPoint = Math.max(lastPeriod, lastNewline)
+      cleanedText = cutPoint > 8000 ? truncated.substring(0, cutPoint + 1) : truncated
+    }
     
     console.log('Menu content extracted, length:', cleanedText.length)
     console.log('Menu content preview:', cleanedText.substring(0, 200))
