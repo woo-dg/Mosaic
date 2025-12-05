@@ -181,17 +181,19 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
     }
   }, [restaurantSlug, loadPhotos])
   
-  // Only poll when photos exist - prevents flickering when empty
+  // Only poll when photos exist - but much less frequently to save API costs
+  // Realtime subscription handles most updates, polling is just a backup
   useEffect(() => {
     if (photos.length === 0) {
       // No photos - don't poll, just rely on realtime subscription
       return
     }
     
-    // We have photos - start polling for updates (every 2 seconds)
+    // Poll much less frequently - every 30 seconds instead of 2 seconds
+    // This is just a backup in case realtime subscription misses something
     const pollInterval = setInterval(() => {
       loadPhotos()
-    }, 2000)
+    }, 30000) // 30 seconds instead of 2 seconds
     
     return () => {
       clearInterval(pollInterval)
@@ -361,13 +363,6 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
 
   const currentPhoto = photos[currentIndex]
   const currentImageUrl = currentPhoto ? imageUrls[currentPhoto.id] : null
-  
-  // Debug logging for menu items
-  if (currentPhoto?.menu_item) {
-    console.log('Current photo has menu item:', currentPhoto.menu_item)
-  } else if (currentPhoto) {
-    console.log('Current photo has no menu item:', currentPhoto.id)
-  }
 
   // Get previous and next photos for side display
   const prevIndex = (currentIndex - 1 + photos.length) % photos.length
@@ -417,28 +412,30 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
           {currentImageUrl ? (
             <div 
               key={currentPhoto.id}
-              className={`relative w-full h-full rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 cursor-pointer ${
+              className={`relative w-full h-full rounded-2xl overflow-visible shadow-2xl transition-all duration-300 cursor-pointer ${
                 isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
               }`}
               onClick={() => setIsZoomed(!isZoomed)}
             >
-              <Image
-                src={currentImageUrl}
-                alt={`Photo ${currentIndex + 1}`}
-                fill
-                className="object-cover"
-                sizes="(max-width: 640px) 320px, 460px"
-                priority
-                unoptimized
-              />
-              {/* Menu item overlay - shown above image with simple black text */}
-              {currentPhoto?.menu_item && (
-                <div className="absolute -top-14 sm:-top-16 left-1/2 -translate-x-1/2 z-30 text-center">
-                  <h3 className="text-black text-xl sm:text-2xl font-semibold tracking-tight drop-shadow-[0_2px_4px_rgba(255,255,255,0.8)]" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-                    {currentPhoto.menu_item.name}
-                  </h3>
-                </div>
-              )}
+              <div className="relative w-full h-full rounded-2xl overflow-hidden">
+                <Image
+                  src={currentImageUrl}
+                  alt={`Photo ${currentIndex + 1}`}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 640px) 320px, 460px"
+                  priority
+                  unoptimized
+                />
+                {/* Menu item overlay - shown at top of image with simple black text */}
+                {currentPhoto?.menu_item && (
+                  <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 text-center pointer-events-none w-full px-4">
+                    <h3 className="text-black text-xl sm:text-2xl font-semibold tracking-tight drop-shadow-[0_2px_8px_rgba(255,255,255,0.95),0_0_0_3px_rgba(255,255,255,0.8)]" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+                      {currentPhoto.menu_item.name}
+                    </h3>
+                  </div>
+                )}
+              </div>
               {/* Instagram handle overlay - shown below menu item or at top if no menu item */}
               {currentPhoto?.instagram_handle && (
                 <div className={`absolute left-0 right-0 bg-gradient-to-b from-black/80 via-black/40 to-transparent p-4 z-30 ${
