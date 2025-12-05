@@ -31,9 +31,10 @@ export default function RestaurantDashboardPage() {
   const [filterDays, setFilterDays] = useState<number | null>(null)
   const [menuItems, setMenuItems] = useState<any[]>([])
   const [menuItemsLoading, setMenuItemsLoading] = useState(true)
-  const [showAddMenuForm, setShowAddMenuForm] = useState(false)
-  const [newMenuItem, setNewMenuItem] = useState({ name: '', category: '', description: '', price: '' })
-  const [addingMenuItem, setAddingMenuItem] = useState(false)
+  const [uploadingMenuImage, setUploadingMenuImage] = useState(false)
+  const [parsedMenuItems, setParsedMenuItems] = useState<any[]>([])
+  const [showParsedItems, setShowParsedItems] = useState(false)
+  const [savingMenuItems, setSavingMenuItems] = useState(false)
 
   useEffect(() => {
     if (!isLoaded) return
@@ -196,10 +197,11 @@ export default function RestaurantDashboardPage() {
   }
 
 
-  const handleAddMenuItem = async () => {
-    if (!user || !authorized || !newMenuItem.name.trim()) return
+  const handleMenuImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !user || !authorized) return
 
-    setAddingMenuItem(true)
+    setUploadingMenuImage(true)
     try {
       const token = await getToken()
       const supabase = await createAuthenticatedClient(token)
@@ -215,36 +217,90 @@ export default function RestaurantDashboardPage() {
 
       const restaurantData = restaurant as { id: string }
 
-      const response = await fetch('/api/menu/items', {
+      // Upload image for parsing
+      const formData = new FormData()
+      formData.append('restaurantId', restaurantData.id)
+      formData.append('image', file)
+
+      const response = await fetch('/api/menu/parse-image', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          restaurantId: restaurantData.id,
-          name: newMenuItem.name.trim(),
-          category: newMenuItem.category.trim() || null,
-          description: newMenuItem.description.trim() || null,
-          price: newMenuItem.price.trim() || null,
-        })
+        body: formData,
       })
 
       const data = await response.json()
 
       if (!response.ok) {
-        alert(data.error || 'Failed to add menu item')
+        alert(data.error || 'Failed to parse menu image')
         return
       }
 
-      // Reset form and reload menu items
-      setNewMenuItem({ name: '', category: '', description: '', price: '' })
-      setShowAddMenuForm(false)
+      // Show parsed items for review
+      setParsedMenuItems(data.menuItems || [])
+      setShowParsedItems(true)
+    } catch (error) {
+      console.error('Error uploading menu image:', error)
+      alert('Failed to upload menu image')
+    } finally {
+      setUploadingMenuImage(false)
+      // Reset file input
+      e.target.value = ''
+    }
+  }
+
+  const handleSaveParsedMenuItems = async () => {
+    if (!user || !authorized || parsedMenuItems.length === 0) return
+
+    setSavingMenuItems(true)
+    try {
+      const token = await getToken()
+      const supabase = await createAuthenticatedClient(token)
+      
+      // Get restaurant ID
+      const { data: restaurant } = await supabase
+        .from('restaurants')
+        .select('id')
+        .eq('slug', slug)
+        .single()
+
+      if (!restaurant) return
+
+      const restaurantData = restaurant as { id: string }
+
+      // Save all parsed items
+      const savePromises = parsedMenuItems.map(item =>
+        fetch('/api/menu/items', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            restaurantId: restaurantData.id,
+            name: item.name,
+            category: item.category || null,
+            description: item.description || null,
+            price: item.price || null,
+          })
+        })
+      )
+
+      const results = await Promise.all(savePromises)
+      const errors = results.filter(r => !r.ok)
+
+      if (errors.length > 0) {
+        alert(`Saved ${parsedMenuItems.length - errors.length} items. ${errors.length} failed.`)
+      } else {
+        alert(`Successfully saved ${parsedMenuItems.length} menu items!`)
+      }
+
+      // Clear parsed items and reload menu
+      setParsedMenuItems([])
+      setShowParsedItems(false)
       loadMenuItems()
     } catch (error) {
-      console.error('Error adding menu item:', error)
-      alert('Failed to add menu item')
+      console.error('Error saving menu items:', error)
+      alert('Failed to save menu items')
     } finally {
-      setAddingMenuItem(false)
+      setSavingMenuItems(false)
     }
   }
 
@@ -341,76 +397,61 @@ export default function RestaurantDashboardPage() {
         <div className="mb-8 bg-white rounded-lg shadow p-6">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold">Menu Items</h3>
-            <button
-              onClick={() => setShowAddMenuForm(!showAddMenuForm)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-            >
-              {showAddMenuForm ? 'Cancel' : '+ Add Menu Item'}
-            </button>
+            <label className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition cursor-pointer">
+              {uploadingMenuImage ? 'Uploading...' : '+ Upload Menu Photo'}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleMenuImageUpload}
+                disabled={uploadingMenuImage}
+                className="hidden"
+              />
+            </label>
           </div>
 
-          {showAddMenuForm && (
-            <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <h4 className="font-medium mb-3">Add New Menu Item</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={newMenuItem.name}
-                    onChange={(e) => setNewMenuItem({ ...newMenuItem, name: e.target.value })}
-                    placeholder="e.g., Enchiladas"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Category (optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={newMenuItem.category}
-                    onChange={(e) => setNewMenuItem({ ...newMenuItem, category: e.target.value })}
-                    placeholder="e.g., Entrees"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description (optional)
-                  </label>
-                  <textarea
-                    value={newMenuItem.description}
-                    onChange={(e) => setNewMenuItem({ ...newMenuItem, description: e.target.value })}
-                    placeholder="e.g., Corn tortillas rolled around chicken tinga..."
-                    rows={2}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Price (optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={newMenuItem.price}
-                    onChange={(e) => setNewMenuItem({ ...newMenuItem, price: e.target.value })}
-                    placeholder="e.g., $12.99"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div className="flex items-end">
-                  <button
-                    onClick={handleAddMenuItem}
-                    disabled={addingMenuItem || !newMenuItem.name.trim()}
-                    className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition"
-                  >
-                    {addingMenuItem ? 'Adding...' : 'Add Item'}
-                  </button>
-                </div>
+          {showParsedItems && parsedMenuItems.length > 0 && (
+            <div className="mb-6 p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
+              <div className="flex justify-between items-center mb-3">
+                <h4 className="font-semibold text-blue-900">
+                  Found {parsedMenuItems.length} menu items - Review & Save
+                </h4>
+                <button
+                  onClick={() => {
+                    setShowParsedItems(false)
+                    setParsedMenuItems([])
+                  }}
+                  className="text-blue-600 hover:text-blue-800 text-sm"
+                >
+                  Cancel
+                </button>
               </div>
+              <div className="max-h-96 overflow-y-auto space-y-2 mb-4">
+                {parsedMenuItems.map((item, index) => (
+                  <div key={index} className="p-3 bg-white rounded border border-blue-200">
+                    <div className="flex items-start gap-2">
+                      <span className="font-medium text-gray-900">{item.name}</span>
+                      {item.category && (
+                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                          {item.category}
+                        </span>
+                      )}
+                      {item.price && (
+                        <span className="text-sm text-gray-600">{item.price}</span>
+                      )}
+                    </div>
+                    {item.description && (
+                      <p className="text-sm text-gray-600 mt-1">{item.description}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={handleSaveParsedMenuItems}
+                disabled={savingMenuItems}
+                className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition font-medium"
+              >
+                {savingMenuItems ? 'Saving...' : `Save All ${parsedMenuItems.length} Items`}
+              </button>
             </div>
           )}
 

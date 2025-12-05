@@ -6,3 +6,4 @@ ADD COLUMN IF NOT EXISTS rating INTEGER;
 COMMENT ON COLUMN public.submissions.rating IS 'Rating from 1 to 5 stars provided by the user';
 
 
+

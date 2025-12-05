@@ -424,18 +424,18 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
                 priority
                 unoptimized
               />
-              {/* Menu item overlay - shown at top */}
+              {/* Menu item overlay - shown above image with elegant black text */}
               {currentPhoto?.menu_item && (
-                <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/90 via-black/50 to-transparent p-4 pt-6 z-30">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {currentPhoto.menu_item.category && (
-                      <span className="text-xs sm:text-sm text-gray-300 uppercase tracking-wide">
-                        {currentPhoto.menu_item.category}
-                      </span>
-                    )}
-                    <h3 className="text-white text-base sm:text-lg font-bold">
+                <div className="absolute -top-12 left-1/2 -translate-x-1/2 z-30 w-full max-w-[280px] sm:max-w-[400px]">
+                  <div className="bg-white/95 backdrop-blur-sm rounded-lg px-4 py-2.5 shadow-lg border border-gray-200/50">
+                    <h3 className="text-black text-center text-lg sm:text-xl font-semibold tracking-tight" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
                       {currentPhoto.menu_item.name}
                     </h3>
+                    {currentPhoto.menu_item.category && (
+                      <p className="text-gray-600 text-center text-xs sm:text-sm mt-0.5 uppercase tracking-wider">
+                        {currentPhoto.menu_item.category}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}

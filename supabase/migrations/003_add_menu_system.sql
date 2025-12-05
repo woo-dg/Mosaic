@@ -65,3 +65,4 @@ CREATE POLICY "public_menu_items_read" ON public.menu_items
     FOR SELECT
     USING (true);
 
+
