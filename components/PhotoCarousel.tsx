@@ -409,33 +409,31 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
             ? 'w-[320px] sm:w-[460px] h-[460px] sm:h-[630px]' 
             : 'w-[280px] sm:w-[400px] h-[400px] sm:h-[550px]'
         }`}>
+          {/* Menu item text - displayed ABOVE the image */}
+          {currentPhoto?.menu_item && (
+            <div className="absolute -top-12 sm:-top-14 left-1/2 -translate-x-1/2 z-40 text-center pointer-events-none w-full px-4">
+              <h3 className="text-black text-xl sm:text-2xl font-semibold tracking-tight" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+                {currentPhoto.menu_item.name}
+              </h3>
+            </div>
+          )}
           {currentImageUrl ? (
             <div 
               key={currentPhoto.id}
-              className={`relative w-full h-full rounded-2xl overflow-visible shadow-2xl transition-all duration-300 cursor-pointer ${
+              className={`relative w-full h-full rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 cursor-pointer ${
                 isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
               }`}
               onClick={() => setIsZoomed(!isZoomed)}
             >
-              <div className="relative w-full h-full rounded-2xl overflow-hidden">
-                <Image
-                  src={currentImageUrl}
-                  alt={`Photo ${currentIndex + 1}`}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 640px) 320px, 460px"
-                  priority
-                  unoptimized
-                />
-                {/* Menu item overlay - shown at top of image with simple black text */}
-                {currentPhoto?.menu_item && (
-                  <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 text-center pointer-events-none w-full px-4">
-                    <h3 className="text-black text-xl sm:text-2xl font-semibold tracking-tight drop-shadow-[0_2px_8px_rgba(255,255,255,0.95),0_0_0_3px_rgba(255,255,255,0.8)]" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-                      {currentPhoto.menu_item.name}
-                    </h3>
-                  </div>
-                )}
-              </div>
+              <Image
+                src={currentImageUrl}
+                alt={`Photo ${currentIndex + 1}`}
+                fill
+                className="object-cover"
+                sizes="(max-width: 640px) 320px, 460px"
+                priority
+                unoptimized
+              />
               {/* Instagram handle overlay - shown below menu item or at top if no menu item */}
               {currentPhoto?.instagram_handle && (
                 <div className={`absolute left-0 right-0 bg-gradient-to-b from-black/80 via-black/40 to-transparent p-4 z-30 ${
