@@ -29,12 +29,11 @@ export default function RestaurantDashboardPage() {
   const [authorized, setAuthorized] = useState<boolean | null>(null)
   const [filterMarketing, setFilterMarketing] = useState(false)
   const [filterDays, setFilterDays] = useState<number | null>(null)
-  const [menuUrl, setMenuUrl] = useState<string>('')
-  const [menuUrlLoading, setMenuUrlLoading] = useState(true)
-  const [menuUrlSaving, setMenuUrlSaving] = useState(false)
-  const [menuUrlSaved, setMenuUrlSaved] = useState(false)
-  const [menuStatus, setMenuStatus] = useState<string>('')
-  const loadMenuUrlRef = useRef(false) // Prevent concurrent calls
+  const [menuItems, setMenuItems] = useState<any[]>([])
+  const [menuItemsLoading, setMenuItemsLoading] = useState(true)
+  const [showAddMenuForm, setShowAddMenuForm] = useState(false)
+  const [newMenuItem, setNewMenuItem] = useState({ name: '', category: '', description: '', price: '' })
+  const [addingMenuItem, setAddingMenuItem] = useState(false)
 
   useEffect(() => {
     if (!isLoaded) return
@@ -46,14 +45,10 @@ export default function RestaurantDashboardPage() {
     checkAuthorization()
   }, [user, isLoaded, slug])
 
-  const loadMenuUrl = useCallback(async (showLoading = false) => {
-    if (!user || !authorized || loadMenuUrlRef.current) return
+  const loadMenuItems = useCallback(async () => {
+    if (!user || !authorized) return
 
-    loadMenuUrlRef.current = true
-    if (showLoading) {
-      setMenuUrlLoading(true)
-    }
-    
+    setMenuItemsLoading(true)
     try {
       const token = await getToken()
       const supabase = await createAuthenticatedClient(token)
@@ -66,63 +61,33 @@ export default function RestaurantDashboardPage() {
         .single()
 
       if (!restaurant) {
-        loadMenuUrlRef.current = false
+        setMenuItemsLoading(false)
         return
       }
 
       const restaurantData = restaurant as { id: string }
 
-      // Get most recent menu source
-      const { data: menuSource, error } = await (supabase
-        .from('menu_sources') as any)
-        .select('source_url, status')
-        .eq('restaurant_id', restaurantData.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
+      // Fetch menu items
+      const response = await fetch(`/api/menu/items?restaurantId=${restaurantData.id}`)
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error loading menu URL:', error)
-      }
-
-      if (menuSource) {
-        setMenuUrl(menuSource.source_url || '')
-        setMenuStatus(menuSource.status || '')
+      if (response.ok) {
+        const data = await response.json()
+        setMenuItems(data.menuItems || [])
       }
     } catch (error) {
-      // No menu source exists yet, that's okay
-      if (showLoading) {
-        console.log('No menu source found')
-      }
+      console.error('Error loading menu items:', error)
     } finally {
-      setMenuUrlLoading(false)
-      loadMenuUrlRef.current = false
+      setMenuItemsLoading(false)
     }
   }, [user, authorized, slug, getToken])
 
   useEffect(() => {
     if (authorized === true) {
       loadSubmissions()
-      loadMenuUrl(true) // Show loading on initial load
+      loadMenuItems()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authorized, filterMarketing, filterDays])
-
-  // Single polling effect for menu status - replaces multiple overlapping intervals
-  useEffect(() => {
-    if (!authorized || (menuStatus !== 'pending' && menuStatus !== 'processing')) {
-      return
-    }
-
-    const statusInterval = setInterval(() => {
-      loadMenuUrl(false) // Don't show loading spinner during polling
-    }, 5000) // Poll every 5 seconds
-
-    return () => {
-      clearInterval(statusInterval)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authorized, menuStatus])
 
   const checkAuthorization = async () => {
     if (!user) return
@@ -231,10 +196,10 @@ export default function RestaurantDashboardPage() {
   }
 
 
-  const handleSaveMenuUrl = async () => {
-    if (!user || !authorized || !menuUrl.trim()) return
+  const handleAddMenuItem = async () => {
+    if (!user || !authorized || !newMenuItem.name.trim()) return
 
-    setMenuUrlSaving(true)
+    setAddingMenuItem(true)
     try {
       const token = await getToken()
       const supabase = await createAuthenticatedClient(token)
@@ -250,46 +215,79 @@ export default function RestaurantDashboardPage() {
 
       const restaurantData = restaurant as { id: string }
 
-      const response = await fetch('/api/menu/update', {
+      const response = await fetch('/api/menu/items', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           restaurantId: restaurantData.id,
-          menuUrl: menuUrl.trim()
+          name: newMenuItem.name.trim(),
+          category: newMenuItem.category.trim() || null,
+          description: newMenuItem.description.trim() || null,
+          price: newMenuItem.price.trim() || null,
         })
       })
 
       const data = await response.json()
 
       if (!response.ok) {
-        alert(data.error || 'Failed to save menu URL')
-        setMenuUrlSaved(false)
+        alert(data.error || 'Failed to add menu item')
         return
       }
 
-      // Set status to processing (will be updated by polling)
-      setMenuStatus('processing')
-      setMenuUrlSaved(true)
-      
-      // Reload menu URL after a short delay to get the updated URL from server
-      setTimeout(() => {
-        loadMenuUrl(false)
-      }, 1000)
-      
-      // Clear saved state after 5 seconds
-      setTimeout(() => {
-        setMenuUrlSaved(false)
-      }, 5000)
-      
-      // Polling effect will handle status updates automatically
+      // Reset form and reload menu items
+      setNewMenuItem({ name: '', category: '', description: '', price: '' })
+      setShowAddMenuForm(false)
+      loadMenuItems()
     } catch (error) {
-      console.error('Error saving menu URL:', error)
-      alert('Failed to save menu URL')
-      setMenuUrlSaved(false)
+      console.error('Error adding menu item:', error)
+      alert('Failed to add menu item')
     } finally {
-      setMenuUrlSaving(false)
+      setAddingMenuItem(false)
+    }
+  }
+
+  const handleDeleteMenuItem = async (menuItemId: string) => {
+    if (!user || !authorized || !confirm('Are you sure you want to delete this menu item?')) return
+
+    try {
+      const token = await getToken()
+      const supabase = await createAuthenticatedClient(token)
+      
+      // Get restaurant ID
+      const { data: restaurant } = await supabase
+        .from('restaurants')
+        .select('id')
+        .eq('slug', slug)
+        .single()
+
+      if (!restaurant) return
+
+      const restaurantData = restaurant as { id: string }
+
+      const response = await fetch('/api/menu/items', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          restaurantId: restaurantData.id,
+          menuItemId,
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        alert(data.error || 'Failed to delete menu item')
+        return
+      }
+
+      loadMenuItems()
+    } catch (error) {
+      console.error('Error deleting menu item:', error)
+      alert('Failed to delete menu item')
     }
   }
 
@@ -339,64 +337,117 @@ export default function RestaurantDashboardPage() {
       </nav>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Menu URL Section */}
+        {/* Menu Items Section */}
         <div className="mb-8 bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-4">Menu Settings</h3>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <label htmlFor="menuUrl" className="block text-sm font-medium text-gray-700 mb-2">
-                Menu URL
-              </label>
-              <input
-                id="menuUrl"
-                type="url"
-                value={menuUrl}
-                onChange={(e) => setMenuUrl(e.target.value)}
-                placeholder="https://yourrestaurant.com/menu"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                disabled={menuUrlLoading || menuUrlSaving}
-              />
-              {menuStatus && (
-                <div className="mt-2">
-                  <p className="text-xs text-gray-500">
-                    Status: <span className="font-medium capitalize">{menuStatus}</span>
-                    {menuStatus === 'completed' && (
-                      <span className="ml-2 text-green-600">✓ Menu items extracted</span>
-                    )}
-                    {menuStatus === 'processing' && (
-                      <span className="ml-2 text-blue-600">⏳ Processing menu...</span>
-                    )}
-                    {menuStatus === 'failed' && (
-                      <span className="ml-2 text-red-600">✗ Processing failed</span>
-                    )}
-                  </p>
-                  {menuStatus === 'processing' && (
-                    <p className="mt-1 text-xs text-amber-600">
-                      ⚠️ Note: If processing takes too long, check your Supabase quota (egress may be exceeded)
-                    </p>
-                  )}
-                </div>
-              )}
-              <p className="mt-1 text-xs text-gray-500">
-                We'll automatically extract menu items from your website
-              </p>
-            </div>
-            <div className="flex items-end">
-              <button
-                onClick={handleSaveMenuUrl}
-                disabled={menuUrlSaving || !menuUrl.trim() || menuUrlLoading || menuUrlSaved}
-                className={`px-6 py-2 rounded-lg font-medium transition whitespace-nowrap ${
-                  menuUrlSaved 
-                    ? 'bg-gray-500 text-white cursor-default' 
-                    : menuUrlSaving
-                    ? 'bg-blue-500 text-white cursor-wait'
-                    : 'bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed'
-                }`}
-              >
-                {menuUrlSaved ? 'Saved' : menuUrlSaving ? 'Saving...' : 'Save & Process'}
-              </button>
-            </div>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold">Menu Items</h3>
+            <button
+              onClick={() => setShowAddMenuForm(!showAddMenuForm)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            >
+              {showAddMenuForm ? 'Cancel' : '+ Add Menu Item'}
+            </button>
           </div>
+
+          {showAddMenuForm && (
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <h4 className="font-medium mb-3">Add New Menu Item</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={newMenuItem.name}
+                    onChange={(e) => setNewMenuItem({ ...newMenuItem, name: e.target.value })}
+                    placeholder="e.g., Enchiladas"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Category (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={newMenuItem.category}
+                    onChange={(e) => setNewMenuItem({ ...newMenuItem, category: e.target.value })}
+                    placeholder="e.g., Entrees"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Description (optional)
+                  </label>
+                  <textarea
+                    value={newMenuItem.description}
+                    onChange={(e) => setNewMenuItem({ ...newMenuItem, description: e.target.value })}
+                    placeholder="e.g., Corn tortillas rolled around chicken tinga..."
+                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Price (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={newMenuItem.price}
+                    onChange={(e) => setNewMenuItem({ ...newMenuItem, price: e.target.value })}
+                    placeholder="e.g., $12.99"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <button
+                    onClick={handleAddMenuItem}
+                    disabled={addingMenuItem || !newMenuItem.name.trim()}
+                    className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition"
+                  >
+                    {addingMenuItem ? 'Adding...' : 'Add Item'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {menuItemsLoading ? (
+            <p className="text-gray-500">Loading menu items...</p>
+          ) : menuItems.length === 0 ? (
+            <p className="text-gray-500">No menu items yet. Add your first item above!</p>
+          ) : (
+            <div className="space-y-2">
+              {menuItems.map((item) => (
+                <div key={item.id} className="flex items-start justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{item.name}</span>
+                      {item.category && (
+                        <span className="text-xs text-gray-500 bg-gray-200 px-2 py-0.5 rounded">
+                          {item.category}
+                        </span>
+                      )}
+                      {item.price && (
+                        <span className="text-sm text-gray-600">{item.price}</span>
+                      )}
+                    </div>
+                    {item.description && (
+                      <p className="text-sm text-gray-600 mt-1">{item.description}</p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => handleDeleteMenuItem(item.id)}
+                    className="ml-4 text-red-600 hover:text-red-800 text-sm"
+                  >
+                    Delete
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">

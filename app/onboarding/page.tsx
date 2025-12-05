@@ -10,7 +10,6 @@ export default function OnboardingPage() {
   const router = useRouter()
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
-  const [menuUrl, setMenuUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -50,7 +49,6 @@ export default function OnboardingPage() {
         body: JSON.stringify({
           name: name.trim(),
           slug: slug.trim(),
-          menuUrl: menuUrl.trim() || null,
         }),
       })
 
@@ -123,22 +121,6 @@ export default function OnboardingPage() {
             />
             <p className="mt-1 text-xs text-gray-500">
               This will be your public URL: /r/{slug || 'your-slug'}
-            </p>
-          </div>
-          <div>
-            <label htmlFor="menuUrl" className="block text-sm font-medium text-gray-700 mb-1">
-              Menu URL (Optional)
-            </label>
-            <input
-              id="menuUrl"
-              type="url"
-              value={menuUrl}
-              onChange={(e) => setMenuUrl(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="https://yourrestaurant.com/menu"
-            />
-            <p className="mt-1 text-xs text-gray-500">
-              We'll automatically extract menu items from your website
             </p>
           </div>
           {error && (
