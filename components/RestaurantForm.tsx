@@ -12,9 +12,6 @@ interface RestaurantFormProps {
 
 export default function RestaurantForm({ restaurantId, restaurantSlug, onSubmissionSuccess }: RestaurantFormProps) {
   const [images, setImages] = useState<File[]>([])
-  const [feedback, setFeedback] = useState('')
-  const [instagramHandle, setInstagramHandle] = useState('')
-  const [rating, setRating] = useState(0)
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [allowMarketing, setAllowMarketing] = useState(true) // Default to true so photos show in carousel
   const [loading, setLoading] = useState(false)
@@ -27,12 +24,7 @@ export default function RestaurantForm({ restaurantId, restaurantSlug, onSubmiss
     setError('')
 
     if (images.length === 0) {
-      setError('Please upload at least one photo')
-      return
-    }
-
-    if (rating === 0) {
-      setError('Please provide a rating')
+      setError('Please capture at least one photo or video')
       return
     }
 
@@ -47,9 +39,9 @@ export default function RestaurantForm({ restaurantId, restaurantSlug, onSubmiss
       const formData = new FormData()
       formData.append('restaurantId', restaurantId)
       formData.append('restaurantSlug', restaurantSlug)
-      formData.append('feedback', feedback)
-      formData.append('instagramHandle', instagramHandle)
-      formData.append('rating', rating.toString())
+      formData.append('feedback', '')
+      formData.append('instagramHandle', '')
+      formData.append('rating', '0')
       formData.append('agreedPrivate', 'true')
       formData.append('allowMarketing', allowMarketing ? 'true' : 'false')
 
@@ -97,9 +89,6 @@ export default function RestaurantForm({ restaurantId, restaurantSlug, onSubmiss
       
       // Reset form
       setImages([])
-      setFeedback('')
-      setInstagramHandle('')
-      setRating(0)
       setAgreedToTerms(false)
       setAllowMarketing(false)
       setFormKey(prev => prev + 1) // Force ImageUpload to reset
@@ -143,65 +132,11 @@ export default function RestaurantForm({ restaurantId, restaurantSlug, onSubmiss
       <form key={formKey} onSubmit={handleSubmit} className="space-y-6">
         {/* Title */}
         <div className="text-center -mt-4">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Upload your favorite photos</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Capture your experience</h2>
         </div>
 
         {/* Image Upload */}
         <ImageUpload key={formKey} maxImages={3} onImagesChange={setImages} />
-
-        {/* 5 Star Rating - Mandatory */}
-        <div className="flex justify-center gap-4 py-2">
-          {[1, 2, 3, 4, 5].map((star) => (
-            <button
-              key={star}
-              type="button"
-              onClick={() => setRating(star)}
-              className={`text-8xl sm:text-9xl transition-all duration-200 ${
-                star <= rating ? 'text-yellow-400 scale-110' : 'text-gray-300'
-              } hover:text-yellow-400 hover:scale-110`}
-              aria-label={`${star} star`}
-            >
-              ★
-            </button>
-          ))}
-        </div>
-
-        {/* Instagram Handle */}
-        <div>
-          <div className="relative">
-            <span className="absolute left-0 top-1/2 transform -translate-y-1/2 text-gray-500 text-base">@</span>
-            <input
-              id="instagram"
-              type="text"
-              value={instagramHandle}
-              onChange={(e) => setInstagramHandle(e.target.value.replace('@', '').replace(/\s/g, ''))}
-              className="w-full pl-6 pr-4 py-2 text-base border-0 border-b-2 focus:outline-none transition-colors touch-manipulation bg-transparent text-gray-900 border-gray-300 focus:border-green-300"
-              style={{
-                borderBottomColor: instagramHandle.length > 0 
-                  ? `rgb(${34 + Math.min(instagramHandle.length * 15, 200)}, ${197 + Math.min(instagramHandle.length * 2, 58)}, ${94 + Math.min(instagramHandle.length * 2, 106)})`
-                  : undefined
-              }}
-              placeholder="your social tag"
-            />
-          </div>
-        </div>
-
-        {/* Comment field - just a line */}
-        <div>
-          <input
-            id="feedback"
-            type="text"
-            value={feedback}
-            onChange={(e) => setFeedback(e.target.value)}
-            className="w-full py-2 text-base border-0 border-b-2 focus:outline-none transition-colors touch-manipulation bg-transparent text-gray-900 border-gray-300 focus:border-green-300"
-            style={{
-              borderBottomColor: feedback.length > 0 
-                ? `rgb(${34 + Math.min(feedback.length * 15, 200)}, ${197 + Math.min(feedback.length * 2, 58)}, ${94 + Math.min(feedback.length * 2, 106)})`
-                : undefined
-            }}
-            placeholder="leave a comment"
-          />
-        </div>
 
       <div className="space-y-3">
         <label className="flex items-start space-x-3 cursor-pointer touch-manipulation p-4 bg-gray-50 rounded-xl border border-gray-200">
@@ -231,7 +166,7 @@ export default function RestaurantForm({ restaurantId, restaurantSlug, onSubmiss
 
       <button
         type="submit"
-        disabled={loading || !agreedToTerms || images.length === 0 || rating === 0}
+        disabled={loading || !agreedToTerms || images.length === 0}
         className="w-full bg-gray-900 text-white py-4 sm:py-5 px-6 rounded-xl font-semibold text-base sm:text-lg hover:bg-gray-800 active:bg-gray-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all touch-manipulation shadow-lg disabled:shadow-none"
       >
         {loading ? 'Submitting...' : 'Submit'}
