@@ -36,6 +36,9 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
   const [isZoomed, setIsZoomed] = useState(false)
   const autoAdvanceTimerRef = useRef<NodeJS.Timeout | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({})
+  const [playingVideos, setPlayingVideos] = useState<Set<string>>(new Set())
+  const [videoThumbnails, setVideoThumbnails] = useState<Record<string, string>>({})
 
   // Minimum swipe distance (in pixels)
   const minSwipeDistance = 50
@@ -393,12 +396,22 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
           >
             <div className="relative w-full h-full rounded-xl overflow-hidden shadow-2xl">
               {prevPhoto?.is_video ? (
-                <video
-                  src={prevImageUrl}
-                  className="w-full h-full object-cover"
-                  muted
-                  playsInline
-                />
+                <div className="relative w-full h-full">
+                  <video
+                    src={prevImageUrl}
+                    className="w-full h-full object-cover"
+                    poster={prevImageUrl}
+                    muted
+                    playsInline
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                    <div className="bg-white/80 rounded-full p-2 shadow-lg">
+                      <svg className="w-6 h-6 text-gray-900 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z"/>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
               ) : (
                 <Image
                   src={prevImageUrl}
@@ -436,14 +449,79 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
               onClick={() => setIsZoomed(!isZoomed)}
             >
               {currentPhoto.is_video ? (
-                <video
-                  src={currentImageUrl}
-                  className="w-full h-full object-cover"
-                  controls
-                  playsInline
-                  muted
-                  loop
-                />
+                <div className="relative w-full h-full">
+                  <video
+                    ref={(el) => {
+                      if (el) {
+                        videoRefs.current[currentPhoto.id] = el
+                        // Generate thumbnail from first frame
+                        if (!videoThumbnails[currentPhoto.id]) {
+                          el.addEventListener('loadedmetadata', () => {
+                            el.currentTime = 0.1 // Seek to 0.1s to get a frame
+                          })
+                          el.addEventListener('seeked', () => {
+                            const canvas = document.createElement('canvas')
+                            canvas.width = el.videoWidth
+                            canvas.height = el.videoHeight
+                            const ctx = canvas.getContext('2d')
+                            if (ctx) {
+                              ctx.drawImage(el, 0, 0, canvas.width, canvas.height)
+                              const thumbnail = canvas.toDataURL('image/jpeg', 0.8)
+                              setVideoThumbnails(prev => ({ ...prev, [currentPhoto.id]: thumbnail }))
+                            }
+                          })
+                        }
+                      }
+                    }}
+                    src={currentImageUrl}
+                    className="w-full h-full object-cover"
+                    poster={videoThumbnails[currentPhoto.id] || currentImageUrl}
+                    controls={playingVideos.has(currentPhoto.id)}
+                    playsInline
+                    muted
+                    loop
+                    preload="metadata"
+                    onPlay={() => setPlayingVideos(prev => new Set(prev).add(currentPhoto.id))}
+                    onPause={() => setPlayingVideos(prev => {
+                      const next = new Set(prev)
+                      next.delete(currentPhoto.id)
+                      return next
+                    })}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      const video = videoRefs.current[currentPhoto.id]
+                      if (video) {
+                        if (video.paused) {
+                          video.play()
+                        } else {
+                          video.pause()
+                        }
+                      }
+                    }}
+                  />
+                  {!playingVideos.has(currentPhoto.id) && (
+                    <div 
+                      className="absolute inset-0 flex items-center justify-center bg-black/30 cursor-pointer z-10 group"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        const video = videoRefs.current[currentPhoto.id]
+                        if (video) {
+                          video.play()
+                        }
+                      }}
+                    >
+                      <div className="bg-white rounded-full p-4 sm:p-6 shadow-2xl hover:bg-gray-50 transition-all hover:scale-110 group-hover:scale-110">
+                        <svg 
+                          className="w-12 h-12 sm:w-16 sm:h-16 text-gray-900 ml-1" 
+                          fill="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="M8 5v14l11-7z"/>
+                        </svg>
+                      </div>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <Image
                   src={currentImageUrl}
@@ -512,12 +590,22 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
           >
             <div className="relative w-full h-full rounded-xl overflow-hidden shadow-2xl">
               {nextPhoto?.is_video ? (
-                <video
-                  src={nextImageUrl}
-                  className="w-full h-full object-cover"
-                  muted
-                  playsInline
-                />
+                <div className="relative w-full h-full">
+                  <video
+                    src={nextImageUrl}
+                    className="w-full h-full object-cover"
+                    poster={nextImageUrl}
+                    muted
+                    playsInline
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                    <div className="bg-white/80 rounded-full p-2 shadow-lg">
+                      <svg className="w-6 h-6 text-gray-900 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z"/>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
               ) : (
                 <Image
                   src={nextImageUrl}
