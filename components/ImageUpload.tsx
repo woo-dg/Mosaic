@@ -122,7 +122,7 @@ export default function ImageUpload({ maxImages = 3, onImagesChange }: ImageUplo
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*,video/*"
+          accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif,video/mp4,video/webm,video/quicktime,video/x-msvideo,video/3gpp"
           capture="environment"
           multiple={maxImages > 1}
           onChange={handleFileSelect}
@@ -181,6 +181,7 @@ export default function ImageUpload({ maxImages = 3, onImagesChange }: ImageUplo
                   className="w-full h-full object-cover"
                   controls={false}
                   muted
+                  playsInline
                 />
               ) : (
                 <img
