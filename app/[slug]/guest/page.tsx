@@ -86,11 +86,14 @@ export default function GuestPage() {
         
         if (!restaurantData) return
         
+        // Type assertion for restaurantData
+        const restaurant = restaurantData as { id: string }
+        
         // Check if there are any photos now
         const { data: submissions } = await supabase
           .from('submissions')
           .select('id, photos(id)')
-          .eq('restaurant_id', restaurantData.id)
+          .eq('restaurant_id', restaurant.id)
           .or(`allow_marketing.eq.true,created_at.gte.${new Date(Date.now() - 5 * 60 * 1000).toISOString()}`)
           .order('created_at', { ascending: false })
           .limit(1)
