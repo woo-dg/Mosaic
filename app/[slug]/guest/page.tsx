@@ -98,10 +98,16 @@ export default function GuestPage() {
           .order('created_at', { ascending: false })
           .limit(1)
         
-        const hasPhotos = submissions && submissions.length > 0 && 
-                         submissions[0].photos && 
-                         Array.isArray(submissions[0].photos) && 
-                         submissions[0].photos.length > 0
+        // Type assertion for submissions
+        const submissionsList = (submissions || []) as Array<{
+          id: string
+          photos: Array<{ id: string }> | null
+        }>
+        
+        const hasPhotos = submissionsList.length > 0 && 
+                         submissionsList[0].photos && 
+                         Array.isArray(submissionsList[0].photos) && 
+                         submissionsList[0].photos.length > 0
         
         if (hasPhotos) {
           // Photo found! Refresh carousel and hide loading
