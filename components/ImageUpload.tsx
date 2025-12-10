@@ -384,7 +384,7 @@ export default function ImageUpload({ maxImages = 3, onImagesChange }: ImageUplo
 
   const handleClick = () => {
     // Try to use camera API first, fallback to file input
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    if (typeof navigator !== 'undefined' && navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
       captureFromCamera(false)
     } else {
       fileInputRef.current?.click()
@@ -393,7 +393,7 @@ export default function ImageUpload({ maxImages = 3, onImagesChange }: ImageUplo
 
   const handleVideoClick = () => {
     // Try to use camera API first, fallback to file input
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    if (typeof navigator !== 'undefined' && navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
       captureFromCamera(true)
     } else {
       fileInputRef.current?.click()
