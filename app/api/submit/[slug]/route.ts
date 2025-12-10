@@ -83,7 +83,7 @@ export async function POST(
 
     if (images.length === 0) {
       return NextResponse.json(
-        { error: 'At least one image is required' },
+        { error: 'At least one photo or video is required' },
         { 
           status: 400,
           headers: { 'Content-Type': 'application/json' }
@@ -93,7 +93,7 @@ export async function POST(
 
     if (images.length > 3) {
       return NextResponse.json(
-        { error: 'Maximum 3 images allowed' },
+        { error: 'Maximum 3 files allowed' },
         { 
           status: 400,
           headers: { 'Content-Type': 'application/json' }
@@ -101,20 +101,35 @@ export async function POST(
       )
     }
 
-    // Validate file types and sizes
-    for (const image of images) {
-      if (!image.type.startsWith('image/')) {
+    // Validate file types and sizes (allow both images and videos)
+    for (const file of images) {
+      const isImage = file.type.startsWith('image/')
+      const isVideo = file.type.startsWith('video/')
+      
+      if (!isImage && !isVideo) {
         return NextResponse.json(
-          { error: 'Only image files are allowed' },
+          { error: 'Only image and video files are allowed' },
           { 
             status: 400,
             headers: { 'Content-Type': 'application/json' }
           }
         )
       }
-      if (image.size > 5 * 1024 * 1024) {
+      
+      // Different size limits for images vs videos
+      if (isImage && file.size > 5 * 1024 * 1024) {
         return NextResponse.json(
           { error: 'Each image must be less than 5MB' },
+          { 
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          }
+        )
+      }
+      
+      if (isVideo && file.size > 50 * 1024 * 1024) {
+        return NextResponse.json(
+          { error: 'Each video must be less than 50MB' },
           { 
             status: 400,
             headers: { 'Content-Type': 'application/json' }
@@ -192,23 +207,24 @@ export async function POST(
       )
     }
 
-    // Upload images and create photo records
+    // Upload files (images and videos) and create photo records
     const uploadedPhotos = []
     for (let i = 0; i < images.length; i++) {
-      const image = images[i]
-      const fileExt = image.name.split('.').pop()
+      const file = images[i]
+      const fileExt = file.name.split('.').pop()
       const fileName = `${uuidv4()}.${fileExt}`
       const filePath = `${restaurantSlug}/${submissionId}/${fileName}`
+      const isVideo = file.type.startsWith('video/')
 
       // Convert File to ArrayBuffer
-      const arrayBuffer = await image.arrayBuffer()
+      const arrayBuffer = await file.arrayBuffer()
       const buffer = Buffer.from(arrayBuffer)
 
       // Upload to Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from('submissions')
         .upload(filePath, buffer, {
-          contentType: image.type,
+          contentType: file.type,
           upsert: false,
         })
 
@@ -216,7 +232,7 @@ export async function POST(
         // Clean up: delete submission if upload fails
         await supabase.from('submissions').delete().eq('id', submissionId)
         return NextResponse.json(
-          { error: uploadError.message || 'Failed to upload image' },
+          { error: uploadError.message || `Failed to upload ${isVideo ? 'video' : 'image'}` },
           { 
             status: 500,
             headers: { 'Content-Type': 'application/json' }
@@ -224,7 +240,7 @@ export async function POST(
         )
       }
 
-      // Create photo record
+      // Create photo record (works for both images and videos)
       const { data: photoData, error: photoError } = await supabase
         .from('photos')
         .insert({
@@ -239,7 +255,7 @@ export async function POST(
         await supabase.storage.from('submissions').remove([filePath])
         await supabase.from('submissions').delete().eq('id', submissionId)
         return NextResponse.json(
-          { error: photoError?.message || 'Failed to save photo record' },
+          { error: photoError?.message || 'Failed to save media record' },
           { 
             status: 500,
             headers: { 'Content-Type': 'application/json' }
@@ -247,27 +263,29 @@ export async function POST(
         )
       }
 
-      // Get signed URL for classification (async, don't wait)
-      const signedUrlResult = await supabase.storage
-        .from('submissions')
-        .createSignedUrl(filePath, 3600) // 1 hour expiry
+      // Get signed URL for classification (only for images, not videos)
+      if (!isVideo) {
+        const signedUrlResult = await supabase.storage
+          .from('submissions')
+          .createSignedUrl(filePath, 3600) // 1 hour expiry
 
-      const photoId = (photoData as any).id
-      if (signedUrlResult.data?.signedUrl && photoId) {
-        // Trigger async classification (don't wait for it)
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
-                       request.headers.get('origin') || 
-                       'http://localhost:3000'
-        
-        fetch(`${baseUrl}/api/photos/classify`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            photoId: photoId,
-            restaurantId: restaurantData.id,
-            imageUrl: signedUrlResult.data.signedUrl
-          })
-        }).catch(err => console.error('Failed to trigger photo classification:', err))
+        const photoId = (photoData as any).id
+        if (signedUrlResult.data?.signedUrl && photoId) {
+          // Trigger async classification (don't wait for it)
+          const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
+                         request.headers.get('origin') || 
+                         'http://localhost:3000'
+          
+          fetch(`${baseUrl}/api/photos/classify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              photoId: photoId,
+              restaurantId: restaurantData.id,
+              imageUrl: signedUrlResult.data.signedUrl
+            })
+          }).catch(err => console.error('Failed to trigger photo classification:', err))
+        }
       }
 
       uploadedPhotos.push(filePath)

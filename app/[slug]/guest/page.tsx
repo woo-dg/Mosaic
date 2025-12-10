@@ -67,32 +67,69 @@ export default function GuestPage() {
   }
 
   const handleSubmissionSuccess = async () => {
-    // Show loading state first
+    // Show loading state and close modal immediately
     setIsLoadingNewPhoto(true)
+    setShowModal(false)
     
-    // Close modal after a brief delay to let user see success
-    setTimeout(() => {
-      setShowModal(false)
-    }, 400)
+    // Poll for the new photo to appear in the carousel
+    const checkForNewPhoto = async (attempt: number = 0): Promise<void> => {
+      const maxAttempts = 20 // 20 attempts = 10 seconds max
+      const delay = 500 // Check every 500ms
+      
+      try {
+        const supabase = createBrowserClient()
+        const { data: restaurantData } = await supabase
+          .from('restaurants')
+          .select('id')
+          .eq('slug', slug)
+          .single()
+        
+        if (!restaurantData) return
+        
+        // Check if there are any photos now
+        const { data: submissions } = await supabase
+          .from('submissions')
+          .select('id, photos(id)')
+          .eq('restaurant_id', restaurantData.id)
+          .or(`allow_marketing.eq.true,created_at.gte.${new Date(Date.now() - 5 * 60 * 1000).toISOString()}`)
+          .order('created_at', { ascending: false })
+          .limit(1)
+        
+        const hasPhotos = submissions && submissions.length > 0 && 
+                         submissions[0].photos && 
+                         Array.isArray(submissions[0].photos) && 
+                         submissions[0].photos.length > 0
+        
+        if (hasPhotos) {
+          // Photo found! Refresh carousel and hide loading
+          setCarouselKey(prev => prev + 1)
+          // Small delay to ensure carousel renders before hiding loading
+          setTimeout(() => {
+            setIsLoadingNewPhoto(false)
+          }, 300)
+          return
+        }
+        
+        // If no photo yet and we haven't exceeded max attempts, try again
+        if (attempt < maxAttempts) {
+          setTimeout(() => checkForNewPhoto(attempt + 1), delay)
+        } else {
+          // Max attempts reached, hide loading anyway and refresh carousel
+          setCarouselKey(prev => prev + 1)
+          setIsLoadingNewPhoto(false)
+        }
+      } catch (error) {
+        console.error('Error checking for new photo:', error)
+        // On error, refresh carousel and hide loading
+        setCarouselKey(prev => prev + 1)
+        setIsLoadingNewPhoto(false)
+      }
+    }
     
-    // Force carousel to refresh after photo has time to process
+    // Start checking after a brief delay to allow upload to complete
     setTimeout(() => {
-      setCarouselKey(prev => prev + 1)
-    }, 600)
-    
-    setTimeout(() => {
-      setCarouselKey(prev => prev + 1)
-    }, 1200)
-    
-    // Refresh again after classification might have completed (5 seconds)
-    setTimeout(() => {
-      setCarouselKey(prev => prev + 1)
-    }, 5000)
-    
-    // Hide loading state after photo should be loaded
-    setTimeout(() => {
-      setIsLoadingNewPhoto(false)
-    }, 2000)
+      checkForNewPhoto()
+    }, 1000)
   }
 
   return (

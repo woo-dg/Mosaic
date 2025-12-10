@@ -16,6 +16,7 @@ interface Photo {
     name: string
     category: string | null
   } | null
+  is_video?: boolean
 }
 
 interface PhotoCarouselProps {
@@ -391,14 +392,23 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
             }}
           >
             <div className="relative w-full h-full rounded-xl overflow-hidden shadow-2xl">
-              <Image
-                src={prevImageUrl}
-                alt="Previous photo"
-                fill
-                className="object-cover"
-                sizes="180px"
-                unoptimized
-              />
+              {prevPhoto?.is_video ? (
+                <video
+                  src={prevImageUrl}
+                  className="w-full h-full object-cover"
+                  muted
+                  playsInline
+                />
+              ) : (
+                <Image
+                  src={prevImageUrl}
+                  alt="Previous photo"
+                  fill
+                  className="object-cover"
+                  sizes="180px"
+                  unoptimized
+                />
+              )}
             </div>
           </div>
         )}
@@ -425,15 +435,26 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
               }`}
               onClick={() => setIsZoomed(!isZoomed)}
             >
-              <Image
-                src={currentImageUrl}
-                alt={`Photo ${currentIndex + 1}`}
-                fill
-                className="object-cover"
-                sizes="(max-width: 640px) 320px, 460px"
-                priority
-                unoptimized
-              />
+              {currentPhoto.is_video ? (
+                <video
+                  src={currentImageUrl}
+                  className="w-full h-full object-cover"
+                  controls
+                  playsInline
+                  muted
+                  loop
+                />
+              ) : (
+                <Image
+                  src={currentImageUrl}
+                  alt={`Photo ${currentIndex + 1}`}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 640px) 320px, 460px"
+                  priority
+                  unoptimized
+                />
+              )}
               {/* Instagram handle overlay - shown below menu item or at top if no menu item */}
               {currentPhoto?.instagram_handle && (
                 <div className={`absolute left-0 right-0 bg-gradient-to-b from-black/80 via-black/40 to-transparent p-4 z-30 ${
@@ -490,14 +511,23 @@ export default function PhotoCarousel({ restaurantSlug, onUploadClick }: PhotoCa
             }}
           >
             <div className="relative w-full h-full rounded-xl overflow-hidden shadow-2xl">
-              <Image
-                src={nextImageUrl}
-                alt="Next photo"
-                fill
-                className="object-cover"
-                sizes="180px"
-                unoptimized
-              />
+              {nextPhoto?.is_video ? (
+                <video
+                  src={nextImageUrl}
+                  className="w-full h-full object-cover"
+                  muted
+                  playsInline
+                />
+              ) : (
+                <Image
+                  src={nextImageUrl}
+                  alt="Next photo"
+                  fill
+                  className="object-cover"
+                  sizes="180px"
+                  unoptimized
+                />
+              )}
             </div>
           </div>
         )}

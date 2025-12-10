@@ -93,6 +93,10 @@ export async function GET(
           })
           .flatMap((submission: any) =>
             (submission.photos || []).map((photo: any) => {
+              // Determine if file is video based on extension
+              const fileExt = photo.file_path.split('.').pop()?.toLowerCase() || ''
+              const isVideo = ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv'].includes(fileExt)
+              
               return {
                 id: photo.id,
                 file_path: photo.file_path,
@@ -101,6 +105,7 @@ export async function GET(
                 feedback: submission.feedback || null,
                 rating: null,
                 menu_item: photo.menu_item || null,
+                is_video: isVideo,
               }
             })
           )
@@ -130,6 +135,10 @@ export async function GET(
             console.log('Photo has menu_item_id:', photo.menu_item_id, 'menu_item:', photo.menu_item)
           }
           
+          // Determine if file is video based on extension
+          const fileExt = photo.file_path.split('.').pop()?.toLowerCase() || ''
+          const isVideo = ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv'].includes(fileExt)
+          
           return {
             id: photo.id,
             file_path: photo.file_path,
@@ -139,6 +148,7 @@ export async function GET(
             rating: submission.rating || null,
             menu_item: photo.menu_item || null,
             menu_item_id: photo.menu_item_id || null, // Keep menu_item_id for fallback
+            is_video: isVideo,
           }
         })
       )
